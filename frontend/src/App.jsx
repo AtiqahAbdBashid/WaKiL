@@ -1,18 +1,21 @@
-import { BrowserRouter } from 'react-router-dom'
-import AppRoutes from './routes/AppRoutes'
-import Header from './components/ui/Header';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import LandingPage from "./components/landing/LandingPage";
+import CitizenLayout from "./layouts/CitizenLayout";
+import CitizenDashboardPage from "./pages/citizen/CitizenDashboardPage";
 
 export default function App() {
- return (
-    <div className="min-h-screen bg-slate-50">
-      <Header
-        language="bm"
-        setLanguage={() => {}}
-        onMobileMenu={() => {}}
-      />
-      <div className="p-6">
-        <h1 className="text-lg font-bold text-slate-800">App Content</h1>
-      </div>
-    </div>
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Citizen Pages */}
+        <Route path="/citizen" element={<CitizenLayout />}>
+          <Route index element={<CitizenDashboardPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
