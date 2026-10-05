@@ -1,3 +1,5 @@
+import PagePlaceholder from '../../components/ui/PagePlaceholder'
+
 export default function NotificationsPage() {
-  return null
+  return <PagePlaceholder title="Notifications" />
 }

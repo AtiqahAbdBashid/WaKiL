@@ -1,3 +1,5 @@
+import PagePlaceholder from '../../components/ui/PagePlaceholder'
+
 export default function FacebookMonitorPage() {
-  return null
+  return <PagePlaceholder title="Facebook Monitor" />
 }

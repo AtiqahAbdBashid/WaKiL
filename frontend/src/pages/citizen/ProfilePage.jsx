@@ -1,3 +1,5 @@
+import PagePlaceholder from '../../components/ui/PagePlaceholder'
+
 export default function ProfilePage() {
-  return null
+  return <PagePlaceholder title="My Profile" />
 }

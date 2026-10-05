@@ -1,3 +1,5 @@
+import PagePlaceholder from '../../components/ui/PagePlaceholder'
+
 export default function MapPage() {
-  return null
+  return <PagePlaceholder title="Map" />
 }

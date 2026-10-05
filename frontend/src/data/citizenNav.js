@@ -2,9 +2,9 @@ import { Bell, ClipboardList, LayoutGrid, MessageCircle, PlusCircle, User } from
 
 export const citizenNavItems = [
   { label: 'Dashboard', to: '/citizen/dashboard', icon: LayoutGrid },
-  { label: 'Hantar Aduan', to: '/citizen/hantar-aduan', icon: PlusCircle },
-  { label: 'Aduan Saya', to: '/citizen/aduan-saya', icon: ClipboardList },
-  { label: 'WaKiL AI Chat', to: '/citizen/ai-chat', icon: MessageCircle, badge: 'Smart' },
-  { label: 'Notifikasi', to: '/citizen/notifikasi', icon: Bell, count: 3 },
-  { label: 'Profil Saya', to: '/citizen/profil', icon: User },
+  { label: 'Submit Complaint', to: '/citizen/hantar-aduan', icon: PlusCircle },
+  { label: 'My Complaints', to: '/citizen/aduan-saya', icon: ClipboardList },
+  { label: 'WaKiL AI', to: '/citizen/wakil-ai', icon: MessageCircle, badge: 'Smart' },
+  { label: 'Notifications', to: '/citizen/notifikasi', icon: Bell, count: 3 },
+  { label: 'My Profile', to: '/citizen/profil', icon: User },
 ]

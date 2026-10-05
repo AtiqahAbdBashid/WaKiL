@@ -1,172 +1,290 @@
-import { PlusCircle, Search, MessageSquare, MapPin, Sparkles } from "lucide-react";
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowRight, MessageCircle, Plus, Search, ShieldCheck } from 'lucide-react'
+
+import PageColumns from '../../components/dashboard/PageColumns'
+import Avatar from '../../components/ui/Avatar'
+import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
+import CategoryTile from '../../components/ui/CategoryTile'
+import ProgressBar from '../../components/ui/ProgressBar'
+import {
+  citizenComplaints,
+  citizenRepresentative,
+  citizenUpdates,
+} from '../../data/citizenMock'
+
+const statusTone = {
+  'Under Review': 'accent',
+  'In Progress': 'brand',
+  Completed: 'mint',
+}
+
+const dotTone = { brand: 'bg-brand', accent: 'bg-accent', mint: 'bg-mint' }
+
+const statTiles = [
+  { label: 'Total', dot: null, count: (list) => list.length },
+  { label: 'Under review', dot: 'bg-accent', count: (list) => list.filter((c) => c.status === 'Under Review').length },
+  { label: 'In progress', dot: 'bg-brand', count: (list) => list.filter((c) => c.status === 'In Progress').length },
+  { label: 'Completed', dot: 'bg-mint', count: (list) => list.filter((c) => c.status === 'Completed').length },
+]
+
+const quickChips = ['Submit a complaint', 'Check status', 'Guide']
+
+function HeroCard({ tone, tag, icon: Icon, title, text, cta, to, children }) {
+  const bg =
+    tone === 'accent'
+      ? 'bg-gradient-to-br from-[#f0506e] to-[#f77a92] shadow-glow-accent'
+      : 'bg-gradient-to-br from-brand-dark to-brand shadow-glow-brand'
+  return (
+    <section className={`relative overflow-hidden rounded-3xl p-6 text-white ${bg} ${children ? 'sm:pr-36' : ''}`}>
+      <div className="flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/25">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <Badge tone={tone === 'accent' ? 'onColor' : 'onColorDark'} caps>
+          {tag}
+        </Badge>
+      </div>
+      <h2 className="mt-4 text-2xl font-extrabold leading-tight">{title}</h2>
+      <p className="mt-1 text-sm text-white/90">{text}</p>
+      <Button as={Link} to={to} variant={tone === 'accent' ? 'onColor' : 'onColorSoft'} className="mt-5">
+        {cta}
+      </Button>
+      {children}
+    </section>
+  )
+}
 
 export default function CitizenDashboardPage() {
-  const stats = [
-    { label: "Total Aduan", count: 4, value: "4 aduan", color: "border-blue-500" },
-    { label: "Dalam Semakan", count: 1, value: "1 aduan", color: "border-amber-500" },
-    { label: "Sedang Bertindak", count: 2, value: "2 aduan", color: "border-indigo-500" },
-    { label: "Telah Selesai", count: 1, value: "1 aduan", color: "border-emerald-500" },
-  ];
+  const navigate = useNavigate()
+  const [tab, setTab] = useState('active')
+  const [query, setQuery] = useState('')
+  const [question, setQuestion] = useState('')
 
-  const aduanList = [
-    {
-      id: 1,
-      title: "Lampu jalan rosak berhampiran taman permainan",
-      location: "Taman X, Shah Alam",
-      date: "16 Sept 2026",
-      status: "Dalam Semakan",
-      statusColor: "bg-amber-50 text-amber-600 border-amber-200",
-      icon: "💡",
-    },
-    {
-      id: 2,
-      title: "Kutipan sampah tidak dibuat",
-      location: "Petaling Jaya",
-      date: "11 Sept 2026",
-      status: "Selesai",
-      statusColor: "bg-emerald-50 text-emerald-600 border-emerald-200",
-      icon: "🗑️",
-    },
-    {
-      id: 3,
-      title: "Jalan rosak",
-      location: "Shah Alam",
-      date: "19 Sept 2026",
-      status: "Baharu",
-      statusColor: "bg-blue-50 text-blue-600 border-blue-200",
-      icon: "🛣️",
-    },
-  ];
+  const visible = citizenComplaints
+    .filter((c) => (tab === 'active' ? c.status !== 'Completed' : c.status === 'Completed'))
+    .filter((c) => `${c.title} ${c.section} ${c.category} #${c.id}`.toLowerCase().includes(query.toLowerCase()))
+  const groups = ['This week', 'Earlier'].map((name) => ({
+    name,
+    items: visible.filter((c) => c.group === name),
+  }))
 
-  return (
-    <div className="w-full space-y-6">
-      {/* Header Info */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Hai, Ain</h1>
-          <p className="text-xs text-slate-500">Apa yang perlukan perhatian hari ini?</p>
-        </div>
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs shadow-sm">
-          <MapPin className="w-4 h-4 text-blue-500" />
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block uppercase">Kawasan Parlimen</span>
-            <span className="font-bold text-slate-800">P.108 Shah Alam / N.40 Kota Anggerik</span>
-          </div>
-        </div>
-      </div>
+  const askAi = (e) => {
+    e.preventDefault()
+    navigate('/citizen/wakil-ai')
+  }
 
-      {/* Main Action Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <button className="bg-[#0c66a4] text-white p-5 rounded-2xl text-left hover:opacity-95 transition flex flex-col justify-between h-36">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <PlusCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-base">Hantar Aduan</h3>
-            <p className="text-xs text-blue-100">Laporkan isu dalam 3 langkah.</p>
-          </div>
-        </button>
-
-        <button className="bg-[#0d9488] text-white p-5 rounded-2xl text-left hover:opacity-95 transition flex flex-col justify-between h-36">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <Search className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-base">Semak Status</h3>
-            <p className="text-xs text-teal-100">Jejaki tindakan untuk aduan anda.</p>
-          </div>
-        </button>
-
-        <button className="bg-[#3b82f6] text-white p-5 rounded-2xl text-left hover:opacity-95 transition flex flex-col justify-between h-36">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-base">Chat dengan WaKiL AI</h3>
-            <p className="text-xs text-blue-100">Dapatkan panduan serta-merta.</p>
-          </div>
-        </button>
-      </div>
-
-      {/* Summary Counts */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((item, idx) => (
-          <div key={idx} className="bg-white border border-slate-200/80 rounded-xl p-4 flex items-center gap-3 shadow-sm">
-            <div className={`w-9 h-9 rounded-full border-2 ${item.color} flex items-center justify-center font-bold text-xs text-slate-800`}>
-              {item.count}
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-400 font-medium">{item.label}</p>
-              <p className="text-xs font-bold text-slate-800">{item.value}</p>
-            </div>
+  const rail = (
+    <>
+      <h2 className="text-lg font-bold text-ink">My complaint status</h2>
+      <dl className="mt-4 grid grid-cols-2 gap-3">
+        {statTiles.map((tile) => (
+          <div key={tile.label} className="rounded-2xl border border-line bg-canvas/50 p-4">
+            <dt className="flex items-center gap-2 text-sm text-muted">
+              {tile.dot && <span aria-hidden="true" className={`h-2 w-2 rounded-full ${tile.dot}`} />}
+              {tile.label}
+            </dt>
+            <dd className="mt-1 text-3xl font-extrabold text-ink">{tile.count(citizenComplaints)}</dd>
           </div>
         ))}
+      </dl>
+
+      <div className="mt-8 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-ink">Latest updates</h2>
+        <Link to="/citizen/notifikasi" className="text-sm font-semibold text-brand hover:underline">
+          See all
+        </Link>
+      </div>
+      <ol className="mt-4 space-y-4">
+        {citizenUpdates.map((u) => (
+          <li key={u.text} className="flex gap-3">
+            <span aria-hidden="true" className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${dotTone[u.tone]}`} />
+            <div>
+              <p className="text-sm font-medium leading-snug text-ink">{u.text}</p>
+              <p className="mt-0.5 text-xs text-muted">{u.date}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-8 flex items-center gap-3 rounded-2xl border border-line bg-canvas/50 p-4">
+        <Avatar initials={citizenRepresentative.initials} tone="neutral" size="lg" online />
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-ink">{citizenRepresentative.name}</p>
+          <p className="text-sm text-muted">{citizenRepresentative.role}</p>
+          <Badge tone="brand" className="mt-1.5 !text-[11px]">
+            <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+            Verified by MyDigital ID
+          </Badge>
+        </div>
       </div>
 
-      {/* Bottom Content Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Aduan Terkini (Left 2 cols) */}
-        <div className="md:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm text-slate-800">Aduan Terkini</h3>
-            <button className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg font-semibold hover:bg-blue-100">
-              Lihat semua
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {aduanList.map((aduan) => (
-              <div key={aduan.id} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex gap-3">
-                    <span className="text-lg p-2 bg-white rounded-lg border border-slate-100 shadow-sm">{aduan.icon}</span>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">{aduan.title}</h4>
-                      <p className="text-[11px] text-slate-400">{aduan.location} • {aduan.date}</p>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${aduan.statusColor}`}>
-                    {aduan.status}
-                  </span>
-                </div>
-                {/* Progress bar placeholder */}
-                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-[#0d9488] h-full w-2/3"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* AI & Hotspot Analytics (Right 1 col) */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
-              <Sparkles className="w-3 h-3" /> Analisis AI & Hotspot
-            </span>
-            <h4 className="font-bold text-sm text-slate-800">Taman X</h4>
-
-            {/* Map Placeholder */}
-            <div className="bg-slate-100 border border-slate-200 rounded-xl h-36 relative overflow-hidden flex items-center justify-center">
-              <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:12px_12px]" />
-              <div className="text-[10px] text-slate-400 font-bold z-10 bg-white/80 px-2 py-1 rounded border border-slate-200">
-                Taman X
-              </div>
-              <MapPin className="w-5 h-5 text-rose-500 absolute top-6 left-12" />
-              <MapPin className="w-5 h-5 text-rose-500 absolute top-8 right-16" />
-              <MapPin className="w-5 h-5 text-rose-500 absolute bottom-6 right-10" />
-            </div>
-
-            <p className="text-xs text-slate-600 font-medium">
-              <span className="font-bold text-slate-900">WaKiL AI:</span> 5 isu lampu jalan terkesan di Taman X
-            </p>
-          </div>
-
-          <button className="w-full bg-[#0d9488] hover:bg-[#0b7c72] text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
-            <Sparkles className="w-3.5 h-3.5" /> Auto-Fill Aduan
+      <form onSubmit={askAi} className="mt-auto pt-10">
+        <label htmlFor="ask-ai" className="text-sm font-bold text-ink">
+          Ask WaKiL AI
+        </label>
+        <div className="relative mt-2">
+          <input
+            id="ask-ai"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask about your complaints"
+            className="w-full rounded-full bg-canvas py-3.5 pl-5 pr-14 text-sm placeholder:text-muted/80 focus:bg-white focus:outline-2 focus:outline-brand/40"
+          />
+          <button
+            type="submit"
+            aria-label="Send question"
+            className="absolute right-1.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-accent text-white hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {quickChips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => navigate('/citizen/wakil-ai')}
+              className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      </form>
+    </>
+  )
+
+  return (
+    <PageColumns rail={rail}>
+      <header>
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Hi, Ain</h1>
+        <p className="mt-1 text-muted">What needs your attention today?</p>
+      </header>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <HeroCard
+          tone="accent"
+          tag="Report an issue"
+          icon={Plus}
+          title="Submit a new complaint"
+          text="Report an issue in 3 easy steps"
+          cta="Start report"
+          to="/citizen/hantar-aduan"
+        />
+        <HeroCard
+          tone="brand"
+          tag="Smart help"
+          icon={MessageCircle}
+          title="Chat with WaKiL AI"
+          text="Get instant guidance"
+          cta="Start chat"
+          to="/citizen/wakil-ai"
+        >
+          {/* TODO: swap for the 3D chat illustration once the asset is supplied */}
+          <span
+            aria-hidden="true"
+            className="absolute right-6 top-1/2 hidden h-24 w-24 -translate-y-1/2 items-center justify-center rounded-3xl bg-white/90 sm:flex"
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#f0506e] to-[#f77a92] text-white shadow-glow-accent">
+              <MessageCircle className="h-7 w-7" />
+            </span>
+          </span>
+        </HeroCard>
       </div>
-    </div>
-  );
+
+      <section aria-labelledby="my-complaints" className="mt-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 id="my-complaints" className="text-2xl font-extrabold text-ink">
+              My Complaints
+            </h2>
+            <Badge tone="neutral">Sample data</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button as={Link} to="/citizen/aduan-saya" variant="ghost" size="sm">
+              See all
+            </Button>
+            <Button as={Link} to="/citizen/hantar-aduan" size="sm">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-line">
+          <div role="tablist" aria-label="Complaint status" className="flex gap-6">
+            {[
+              { id: 'active', label: 'Active' },
+              { id: 'completed', label: 'Completed' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                type="button"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={`-mb-px border-b-2 pb-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-brand ${
+                  tab === t.id ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative mb-2 w-full sm:w-56">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search complaints"
+              placeholder="Search complaints"
+              className="w-full rounded-full bg-transparent py-2 pl-9 pr-3 text-sm placeholder:text-muted focus:bg-canvas focus:outline-2 focus:outline-brand/40"
+            />
+          </div>
+        </div>
+
+        <div role="tabpanel" className="mt-2">
+          {visible.length === 0 && <p className="py-10 text-center text-sm text-muted">No complaints found.</p>}
+          {groups
+            .filter((g) => g.items.length > 0)
+            .map((group) => (
+              <div key={group.name}>
+                <h3 className="mt-5 text-xs font-bold uppercase tracking-widest text-muted">{group.name}</h3>
+                <ul>
+                  {group.items.map((c) => (
+                    <li
+                      key={c.id}
+                      className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 py-3.5 sm:grid-cols-[auto_1fr_auto]"
+                    >
+                      <CategoryTile category={c.category} />
+                      <div className="min-w-0">
+                        <p className="font-semibold leading-snug text-ink">{c.title}</p>
+                        <p className="mt-0.5 text-sm text-muted">
+                          #{c.id} · {c.section} · {c.category} · {c.date}
+                        </p>
+                        <ProgressBar
+                          value={c.progress}
+                          tone={statusTone[c.status] === 'accent' ? 'accent' : statusTone[c.status] === 'mint' ? 'mint' : 'brand'}
+                          label={`Complaint ${c.id} progress`}
+                          className="mt-2"
+                        />
+                      </div>
+                      <Badge tone={statusTone[c.status]} className="col-start-2 justify-self-start sm:col-start-auto">
+                        {c.status}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+        </div>
+      </section>
+    </PageColumns>
+  )
 }

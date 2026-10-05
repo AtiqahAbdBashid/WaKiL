@@ -1,0 +1,20 @@
+import { Droplet, Lightbulb, Trash2, TriangleAlert } from 'lucide-react'
+
+const categories = {
+  Roads: { icon: TriangleAlert, bg: 'bg-[#1e3a5f]' },
+  'Street lights': { icon: Lightbulb, bg: 'bg-accent' },
+  Drainage: { icon: Droplet, bg: 'bg-brand' },
+  Rubbish: { icon: Trash2, bg: 'bg-mint-dark' },
+}
+
+export default function CategoryTile({ category }) {
+  const { icon: Icon, bg } = categories[category] ?? categories.Roads
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white ${bg}`}
+    >
+      <Icon className="h-5 w-5" />
+    </span>
+  )
+}
