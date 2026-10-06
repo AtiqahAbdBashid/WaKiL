@@ -69,6 +69,14 @@ export default function YbLoginPage() {
           Sign in <ArrowRight className="h-5 w-5" aria-hidden="true" />
         </Button>
 
+        <button
+          type="button"
+          onClick={() => navigate('/yb/dashboard')}
+          className="mt-3 w-full rounded-2xl border border-line bg-white py-3 text-sm font-bold text-ink hover:bg-canvas"
+        >
+          Continue with Google (mock)
+        </button>
+
         <div className="mt-6 space-y-3 border-t border-line pt-6 text-sm text-muted">
           <p className="flex items-start gap-2">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

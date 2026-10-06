@@ -8,11 +8,13 @@ import {
   Monitor,
   Settings,
   Sparkles,
+  Users,
 } from 'lucide-react'
 
 export const ybNavItems = [
   { label: 'Dashboard', to: '/yb/dashboard', icon: LayoutGrid },
   { label: 'Complaints', to: '/yb/complaints', icon: Inbox },
+  { label: 'Staff', to: '/yb/staff', icon: Users },
   { label: 'Facebook Monitor', to: '/yb/facebook-monitor', icon: MessageSquare },
   { label: 'AI Insights', to: '/yb/ai-insights', icon: Sparkles },
   { label: 'Analytics', to: '/yb/analytics', icon: BarChart3 },

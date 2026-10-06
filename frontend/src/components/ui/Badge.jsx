@@ -7,12 +7,23 @@ const tones = {
   onColorDark: 'bg-black/20 text-white',
 }
 
-export default function Badge({ tone = 'brand', caps = false, className = '', children }) {
+const statusTone = {
+  Pending: 'brand',
+  'In Progress': 'accent',
+  New: 'accent',
+  'In Review': 'neutral',
+  'In Action': 'mint',
+  Resolved: 'mint',
+  Declined: 'neutral',
+}
+
+export default function Badge({ tone, caps = false, className = '', children }) {
+  const resolved = tone ?? statusTone[children] ?? 'brand'
   return (
     <span
       className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
         caps ? 'uppercase tracking-wider' : ''
-      } ${tones[tone]} ${className}`}
+      } ${tones[resolved]} ${className}`}
     >
       {children}
     </span>

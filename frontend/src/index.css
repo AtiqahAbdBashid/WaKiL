@@ -13,8 +13,18 @@
   --color-mint-soft: #dcf7ef;
   --color-canvas: #f4f4f7;
   --color-ink: #1a1a2e;
+  --color-ink-soft: #5d6480;
   --color-muted: #5d6480;
   --color-line: #e8e9f0;
+  --color-line-ink: #cbd5e1;
+  --color-paper: #ffffff;
+  --color-paper-raised: #f8fafc;
+  --color-paper-sunk: #f1f5f9;
+  --color-brand-deep: #1d4ed8;
+  --color-brand-tint: #ecf3ff;
+  --color-accent-ink: #b81d3b;
+
+  --radius-ticket: 6px;
 
   --font-sans: "Poppins", system-ui, "Segoe UI", Roboto, sans-serif;
 
