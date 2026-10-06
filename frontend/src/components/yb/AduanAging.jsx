@@ -93,7 +93,7 @@ export default function AduanAging() {
                   {items.length === 0 ? (
                     <p className="py-2 text-sm text-ink-soft">No aduans in this range.</p>
                   ) : mode === "category" ? (
-                    <ul className="divide-y divide-line rounded-ticket border border-line">
+                    <ul className="divide-y divide-line rounded-2xl border border-line">
                       {ybCategories.map((cat) => {
                         const n = items.filter((c) => c.category === cat).length;
                         if (!n) return null;
@@ -106,7 +106,7 @@ export default function AduanAging() {
                       })}
                     </ul>
                   ) : (
-                    <ul className="divide-y divide-line rounded-ticket border border-line">
+                    <ul className="divide-y divide-line rounded-2xl border border-line">
                       {[{ id: null, name: "Unassigned" }, ...ybStaff].map((s) => {
                         const key = s.id ?? "unassigned";
                         const n = items.filter((c) => (c.assigneeId ?? null) === (s.id ?? null)).length;

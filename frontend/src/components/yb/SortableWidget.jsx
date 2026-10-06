@@ -27,7 +27,7 @@ export default function SortableWidget({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`${span} h-full ${isDragging ? "relative z-10 opacity-90" : ""}`}
     >
-      <div className="mb-1 flex min-h-11 items-center gap-1 rounded-ticket border border-dashed border-line-ink bg-paper-raised px-2">
+      <div className="mb-1 flex min-h-11 items-center gap-1 rounded-2xl border border-dashed border-line-ink bg-canvas px-2">
         <button
           type="button"
           aria-label={`Drag ${label} to reorder`}
@@ -66,7 +66,7 @@ export default function SortableWidget({
           <EyeOff className="h-5 w-5" />
         </button>
       </div>
-      <div inert={editing} className="h-full rounded-ticket ring-2 ring-brand/40 ring-offset-2 ring-offset-paper">{children}</div>
+      <div inert={editing} className="h-full rounded-2xl ring-2 ring-brand/40 ring-offset-2 ring-offset-paper">{children}</div>
     </div>
   );
 }

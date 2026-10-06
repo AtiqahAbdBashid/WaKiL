@@ -101,7 +101,7 @@ export default function KawasanMap({ negeri, highlightKod, codeKey = "code_parli
 
   if (failed) {
     return (
-      <div className="flex h-72 items-center justify-center rounded bg-paper-sunk p-6 text-center text-sm text-ink-soft">
+      <div className="flex h-72 items-center justify-center rounded bg-canvas p-6 text-center text-sm text-ink-soft">
         Map needs WebGL. {label ?? highlightKod} boundary unavailable on this device.
       </div>
     );

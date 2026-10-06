@@ -7,6 +7,7 @@ const tones = {
   onColorDark: 'bg-black/20 text-white',
 }
 
+// Status text picks its own tone so call sites stay readable without a tone prop.
 const statusTone = {
   Pending: 'brand',
   'In Progress': 'accent',

@@ -1,4 +1,5 @@
 // Single aduan popup, opened from Complaints table. Composer gated to claimer only.
+// TODO: POST /api/aduan/:id/updates + file storage; session-local history for now.
 import { useEffect, useRef, useState } from "react";
 import { Paperclip, X } from "lucide-react";
 
@@ -104,7 +105,7 @@ export default function ComplaintDetailDialog({
         aria-modal="true"
         aria-labelledby="aduan-dialog-title"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-ticket bg-paper shadow-xl sm:rounded-ticket"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-4 md:px-5">
           <div className="min-w-0">
@@ -117,7 +118,7 @@ export default function ComplaintDetailDialog({
             <button
               onClick={onClose}
               aria-label="Close aduan detail"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-ticket text-ink-soft hover:bg-paper-sunk hover:text-ink"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-ink-soft hover:bg-canvas hover:text-ink"
             >
               <X className="h-5 w-5" />
             </button>
@@ -227,7 +228,7 @@ export default function ComplaintDetailDialog({
                 type="file"
                 accept="image/*,.pdf,.doc,.docx"
                 onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
-                className="block w-full text-sm text-ink file:mr-3 file:min-h-11 file:rounded-ticket file:border-2 file:border-ink/80 file:bg-paper file:px-4 file:text-sm file:font-bold"
+                className="block w-full text-sm text-ink file:mr-3 file:min-h-11 file:rounded-2xl file:border-2 file:border-ink/80 file:bg-white file:px-4 file:text-sm file:font-bold"
               />
               {fileName && (
                 <p className="mt-1 flex items-center gap-1 text-xs text-ink-soft">
@@ -240,7 +241,7 @@ export default function ComplaintDetailDialog({
               <button type="submit" className={secondaryButton}>Append update</button>
               <button type="button" onClick={() => { setShowComposer(false); setBody(""); setFileName(""); setFormError(""); }} className={textLink}>Cancel</button>
             </div>
-            <p className="text-xs text-ink-soft">TODO: wire to POST /api/aduan/:id/updates + file storage; mock-first local history only.</p>
+            <p className="text-xs text-ink-soft">Not saved to server yet. Updates stay in this session until the aduan API lands.</p>
               </form>
             )}
           </div>

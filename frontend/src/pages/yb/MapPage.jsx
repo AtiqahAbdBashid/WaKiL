@@ -25,7 +25,7 @@ const areas = [...new Set(ybComplaints.map((c) => c.area))]
   .sort((a, b) => b.open - a.open);
 
 export default function MapPage() {
-  const [selected, setSelected] = useState(areas[0].area);
+  const [selected, setSelected] = useState(areas[0]?.area ?? "");
   const [level, setLevel] = useState("parlimen");
   const [geo, setGeo] = useState({});
   const [pinsByLevel, setPinsByLevel] = useState({});
@@ -81,7 +81,7 @@ export default function MapPage() {
                 onClick={() => setLevel(l.level)}
                 aria-pressed={level === l.level}
                 className={`min-h-11 rounded px-3 text-sm font-bold ${
-                  level === l.level ? "bg-brand text-paper" : "text-ink hover:bg-paper-raised"
+                  level === l.level ? "bg-brand text-white" : "text-ink hover:bg-canvas"
                 }`}
               >
                 {l.level === "parlimen" ? "Parlimen" : "DUN"}
@@ -110,6 +110,9 @@ export default function MapPage() {
 
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Sheet title="Areas">
+          {areas.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">No areas in this sample yet.</p>
+          ) : (
           <ul className="divide-y divide-line">
             {areas.map((a) => (
               <li key={a.area}>
@@ -117,7 +120,7 @@ export default function MapPage() {
                   onClick={() => setSelected(a.area)}
                   aria-pressed={selected === a.area}
                   className={`flex min-h-12 w-full items-center justify-between gap-3 px-4 text-left transition-colors md:px-5 ${
-                    selected === a.area ? "bg-brand text-paper" : "text-ink hover:bg-paper-raised"
+                    selected === a.area ? "bg-brand text-white" : "text-ink hover:bg-canvas"
                   }`}
                 >
                   <span className="flex items-center gap-2 font-bold">
@@ -128,8 +131,10 @@ export default function MapPage() {
               </li>
             ))}
           </ul>
+          )}
         </Sheet>
 
+        {current ? (
         <Sheet title={`${current.area} · ${current.items.length} complaints`}>
           <ul className="divide-y divide-line">
             {current.items.map((c) => (
@@ -144,6 +149,11 @@ export default function MapPage() {
             ))}
           </ul>
         </Sheet>
+        ) : (
+        <Sheet title="No area selected">
+          <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">Pick an area once data loads.</p>
+        </Sheet>
+        )}
       </div>
     </div>
   );

@@ -73,21 +73,21 @@ function MyQueueDashboard({ user }) {
         title={`${firstName}, your queue`}
         subtitle={`${mineOpen.length} open assigned to you · ${pool.length} waiting in pool.`}
         action={
-          <Link to="/yb/complaints" className="inline-flex min-h-11 items-center rounded-ticket bg-brand px-4 text-sm font-bold text-white">
+          <Link to="/yb/complaints" className="inline-flex min-h-11 items-center rounded-2xl bg-brand px-4 text-sm font-bold text-white">
             Open triage
           </Link>
         }
       />
       <SampleNote label="Note:">This dashboard uses sample data until the complaint system is connected.</SampleNote>
       {isIntern && (
-        <p className="rounded-ticket border border-line bg-paper-raised px-4 py-3 text-sm text-ink-soft md:px-5">
+        <p className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft md:px-5">
           Triage only. Claim from pool and move Pending to In Progress. Resolved and reassign stay with Wakil and Aide.
         </p>
       )}
 
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-ticket border border-line bg-paper px-4 py-3">
+          <div key={s.label} className="rounded-2xl border border-line bg-white px-4 py-3">
             <dt className="text-xs font-bold uppercase tracking-wide text-ink-soft">{s.label}</dt>
             <dd className="tabular mt-1 text-3xl font-extrabold text-ink">{s.value}</dd>
             <dd className="mt-0.5 text-xs text-ink-soft">{s.hint}</dd>
@@ -336,7 +336,7 @@ function WakilDashboard() {
           </tr>
         </tbody>
         <tfoot>
-          <tr className="border-t border-ink">
+          <tr className="border-t border-line">
             <th scope="row" className="px-4 py-3 text-sm font-extrabold text-ink md:px-5">Total</th>
             <td colSpan={2} className="tabular px-4 py-3 text-right text-2xl font-semibold text-accent-ink md:px-5">
               {ybComplaints.length}
@@ -365,7 +365,7 @@ function WakilDashboard() {
         subtitle={isEditing ? "Drag to reorder. Changes save automatically." : "What needs the office's attention today."}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <dl className="flex items-start gap-3 rounded-ticket border border-line px-4 py-3 md:min-w-80">
+            <dl className="flex items-start gap-3 rounded-2xl border border-line px-4 py-3 md:min-w-80">
               <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
               <div>
                 <dt className="text-sm font-bold text-ink">Parliament / State seat</dt>
@@ -415,7 +415,7 @@ function WakilDashboard() {
       />
 
       {isEditing && widgetsOpen && (
-        <div className="rounded-ticket border border-line bg-paper p-4 md:px-5">
+        <div className="rounded-2xl border border-line bg-white p-4 md:px-5">
           <p className="text-sm font-bold text-ink">Widgets</p>
           <p className="mt-0.5 text-sm text-ink-soft">Tick to show. Hidden widgets unmount and stop loading.</p>
           <ul className="mt-2 divide-y divide-line">
