@@ -20,10 +20,6 @@ def build_contents(history: list, message: str | None = None) -> list:
 def get_reply(message: str, history: list) -> str:
     context = build_context(message)
     contents = build_contents(history, message)
-    for m in history:
-        role = "model" if m.role == "assistant" else "user"
-        contents.append(types.Content(role=role, parts=[types.Part(text=m.content)]))
-    contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
     draft = extract_draft(contents)
     missing = get_missing_fields(draft)
     instruction = build_instruction(missing)

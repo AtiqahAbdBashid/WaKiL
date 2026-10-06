@@ -35,7 +35,6 @@ def store_embedding(c: Complaint, vector: list[float] | None = None) -> None:
 
 
 def find_possible_duplicate(db: Session, c: Complaint) -> Complaint | None:
-    print("duplicate check running for", c.ticket_id)
     vector = _vector(c)
     pipeline = [
         {
@@ -52,7 +51,6 @@ def find_possible_duplicate(db: Session, c: Complaint) -> Complaint | None:
     ]
     match = None
     for hit in _col.aggregate(pipeline):
-        print("duplicate score:", hit["score"])  # remove after tuning
         if hit["score"] < DUPLICATE_THRESHOLD:
             break
         other = db.get(Complaint, uuid.UUID(hit["complaint_id"]))
