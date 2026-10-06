@@ -42,3 +42,5 @@ venv/
 # Misc
 *.tmp
 *.bak
+
+.firebase/
