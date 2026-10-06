@@ -59,14 +59,10 @@ export function resolveSpans(visibleIds) {
   for (const id of visibleIds) out[id] = FULL;
   const halves = visibleIds.filter((id) => id === "mix" || id === "trend");
   if (halves.length === 2) {
-    const [a, b] = halves.map((id) => visibleIds.indexOf(id));
-    if (b === a + 1) {
-      out[halves[0]] = "lg:col-span-3";
-      out[halves[1]] = "lg:col-span-3";
-    }
+    out.mix = "lg:col-span-3";
+    out.trend = "lg:col-span-3";
   }
-  const ai = visibleIds.indexOf("attention");
-  if (ai >= 0 && visibleIds[ai + 1] === "workload") {
+  if (visibleIds.includes("attention") && visibleIds.includes("workload")) {
     out.attention = "lg:col-span-4";
     out.workload = "lg:col-span-2";
   }
