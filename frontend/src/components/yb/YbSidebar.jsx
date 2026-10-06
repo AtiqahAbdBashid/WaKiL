@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react'
 
 import { ybNavItems } from '../../data/ybNav'
 import { watchedAreas, ybUser } from '../../data/ybMock'
+import { useYbAuth } from '../../auth/YbAuthContext'
 import SidebarNav from '../dashboard/SidebarNav'
 
 const dotTone = {
@@ -12,11 +13,16 @@ const dotTone = {
 }
 
 export default function YbSidebar() {
+  const { user: authUser, canViewStaff } = useYbAuth()
+  const items = canViewStaff ? ybNavItems : ybNavItems.filter((item) => item.to !== '/yb/staff')
+  const user = authUser
+    ? { ...ybUser, name: authUser.name, initials: authUser.initials, role: authUser.role }
+    : ybUser
   return (
     <SidebarNav
       tagline="People's Voice, Representative's Mandate"
-      user={ybUser}
-      items={ybNavItems}
+      user={user}
+      items={items}
       extra={
         <section aria-label="Watched areas" className="mt-8">
           <p className="px-3 text-xs font-bold uppercase tracking-widest text-muted">Watched areas</p>
