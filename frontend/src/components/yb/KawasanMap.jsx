@@ -101,14 +101,15 @@ export default function KawasanMap({ negeri, highlightKod, codeKey = "code_parli
 
   if (failed) {
     return (
-      <div className="flex h-72 items-center justify-center rounded bg-canvas p-6 text-center text-sm text-ink-soft">
+      <div className="mx-auto flex aspect-[9/10] w-full max-w-[560px] items-center justify-center rounded bg-canvas p-6 text-center text-sm text-ink-soft">
         Map needs WebGL. {label ?? highlightKod} boundary unavailable on this device.
       </div>
     );
   }
   return (
-    <div>
-      <div ref={ref} role="img" aria-label={`${highlightKod} boundary highlighted`} className="h-72 w-full overflow-hidden rounded" />
+    <div className="mx-auto w-full max-w-[560px]">
+      {/* 9/10 matches Selangor negeri bounds (~0.9 w/h); 560px caps height on wide sheets. */}
+      <div ref={ref} role="img" aria-label={`${highlightKod} boundary highlighted`} className="aspect-[9/10] w-full overflow-hidden rounded" />
       {pins?.length > 0 ? (
         <>
           <ul aria-label="Aduan pins by status" className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">

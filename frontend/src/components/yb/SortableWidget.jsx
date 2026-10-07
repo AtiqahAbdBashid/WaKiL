@@ -7,6 +7,7 @@ export default function SortableWidget({
   id,
   label,
   span,
+  rowSpan = "",
   editing,
   hideDisabled,
   onHide,
@@ -18,14 +19,14 @@ export default function SortableWidget({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !editing });
 
   if (!editing) {
-    return <div className={`${span} h-full`}>{children}</div>;
+    return <div className={`${span} ${rowSpan} h-full`}>{children}</div>;
   }
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`${span} h-full ${isDragging ? "relative z-10 opacity-90" : ""}`}
+      className={`${span} ${rowSpan} h-full ${isDragging ? "relative z-10 opacity-90" : ""}`}
     >
       <div className="mb-1 flex min-h-11 items-center gap-1 rounded-2xl border border-dashed border-line-ink bg-canvas px-2">
         <button

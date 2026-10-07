@@ -1,7 +1,7 @@
 // Representative dashboard widget registry + persisted layout helpers.
 // Order/hide state lives here so DashboardPage stays lean.
 export const DASHBOARD_WIDGETS = [
-  { id: "kawasan", label: "Kawasan map", span: "lg:col-span-6" },
+  { id: "kawasan", label: "Kawasan map", span: "lg:col-span-3" },
   { id: "mix", label: "Aduan by status / category", span: "lg:col-span-3" },
   { id: "trend", label: "Aduan trend per week", span: "lg:col-span-3" },
   { id: "aging", label: "Aduans by aging", span: "lg:col-span-6" },
@@ -54,9 +54,12 @@ const FULL = "lg:col-span-6";
 
 // Derive column spans from the visible set so lone halves go full width
 // instead of leaving a hole. Not persisted, recomputed at render.
+// Kawasan stays narrow (3 cols): Selangor negeri bounds are ~0.9 w/h,
+// so a full-width shallow frame leaves beige gutters left and right.
 export function resolveSpans(visibleIds) {
   const out = {};
   for (const id of visibleIds) out[id] = FULL;
+  if (visibleIds.includes("kawasan")) out.kawasan = "lg:col-span-3";
   const halves = visibleIds.filter((id) => id === "mix" || id === "trend");
   if (halves.length === 2) {
     out.mix = "lg:col-span-3";
@@ -67,4 +70,14 @@ export function resolveSpans(visibleIds) {
     out.workload = "lg:col-span-2";
   }
   return out;
+}
+
+// Row spans for the side-stack: mix + trend (~370px each) stack beside the
+// tall kawasan map (~650px) when all three are visible. Otherwise no row
+// spans, and the grid falls back to single-row flow.
+export function resolveRowSpans(visibleIds) {
+  if (visibleIds.includes("kawasan") && visibleIds.includes("mix") && visibleIds.includes("trend")) {
+    return { kawasan: "lg:row-span-2" };
+  }
+  return {};
 }

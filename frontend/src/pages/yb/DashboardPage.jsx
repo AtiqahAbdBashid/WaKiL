@@ -26,6 +26,7 @@ import {
   loadDashboardLayout,
   moveId,
   resolveSpans,
+  resolveRowSpans,
   saveDashboardLayout,
 } from "../../components/yb/dashboardLayout";
 
@@ -219,6 +220,7 @@ function RepresentativeDashboard() {
   const visibleIds = order.filter((id) => !hidden.includes(id));
   const widgetById = useMemo(() => Object.fromEntries(DASHBOARD_WIDGETS.map((w) => [w.id, w])), []);
   const spans = resolveSpans(visibleIds);
+  const rowSpans = resolveRowSpans(visibleIds);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -468,6 +470,7 @@ function RepresentativeDashboard() {
                   id={id}
                   label={widgetById[id].label}
                   span={spans[id]}
+                  rowSpan={rowSpans[id] ?? ""}
                   editing={isEditing}
                   hideDisabled={visibleIds.length <= 1}
                   onHide={hideWidget}
