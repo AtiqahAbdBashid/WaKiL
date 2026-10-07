@@ -173,14 +173,32 @@ export function YbComplaintsProvider({ children }) {
   );
 
   const addUpdate = useCallback(
-    (id, { detail, attachmentName }, user) => {
-      touch(
-        id,
-        { updatedAt: today() },
-        { by: user.id, at: today(), action: "update", detail, ...(attachmentName ? { attachmentName } : {}) }
-      );
+    (id, { detail, attachmentName, repeatInGroup }, user) => {
+      const target = complaints.find((x) => x.id === id);
+      const entryFor = (suffix) => ({
+        by: user.id,
+        at: today(),
+        action: "update",
+        detail: suffix ? `${detail} (${suffix})` : detail,
+        ...(attachmentName ? { attachmentName } : {}),
+      });
+      if (repeatInGroup && target?.case_group_id) {
+        const members = complaints.filter(
+          (m) => m.case_group_id === target.case_group_id && isOpenComplaint(m)
+        );
+        for (const m of members) {
+          touch(
+            m.id,
+            { updatedAt: today() },
+            entryFor(members.length > 1 ? `shared across case group` : null)
+          );
+        }
+        return { count: members.length, groupId: target.case_group_id };
+      }
+      touch(id, { updatedAt: today() }, entryFor(null));
+      return { count: 1, groupId: null };
     },
-    [touch]
+    [complaints, touch]
   );
 
   const value = useMemo(

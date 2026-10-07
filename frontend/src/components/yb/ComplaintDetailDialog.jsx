@@ -53,18 +53,23 @@ export default function ComplaintDetailDialog({
   canClaim,
   canReassign,
   statusOptions,
+  poolMode = false,
+  caseGroup = null,
   onClose,
   onClaim,
   onRelease,
   onReassign,
   onStatusChange,
   onAddUpdate,
+  onConfirmMember,
 }) {
   const dialogRef = useDialogFocus(!!c);
   const [body, setBody] = useState("");
   const [fileName, setFileName] = useState("");
   const [formError, setFormError] = useState("");
   const [showComposer, setShowComposer] = useState(false);
+  const [repeatInGroup, setRepeatInGroup] = useState(true);
+  const [confirmNote, setConfirmNote] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -96,10 +101,11 @@ export default function ComplaintDetailDialog({
       setFormError("Write update text first.");
       return;
     }
-    onAddUpdate(c.id, { detail: text, attachmentName: fileName || null });
+    onAddUpdate(c.id, { detail: text, attachmentName: fileName || null, repeatInGroup: caseGroup ? repeatInGroup : false });
     setBody("");
     setFileName("");
     setFormError("");
+    setRepeatInGroup(true);
     setShowComposer(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -109,6 +115,7 @@ export default function ComplaintDetailDialog({
     setBody("");
     setFileName("");
     setFormError("");
+    setRepeatInGroup(true);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -167,20 +174,43 @@ export default function ComplaintDetailDialog({
             {c.case_group_id && (
               <>
                 <dt className="font-bold text-ink">Case group</dt>
-                <dd className="text-ink">{c.case_group_id}{c.case_group_confirmed ? " · confirmed" : " · tentative"}</dd>
+                <dd className="text-ink">
+                  {c.case_group_id}{c.case_group_confirmed ? " · confirmed" : " · tentative"}
+                  {!c.case_group_confirmed && canReassign && onConfirmMember && (
+                    <span className="ml-3 inline-flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const ok = onConfirmMember(c.id);
+                          setConfirmNote(ok ? "Membership confirmed." : "Complaint is closed and cannot be confirmed.");
+                        }}
+                        className={textLink}
+                      >
+                        Confirm membership
+                      </button>
+                      {confirmNote && <span className="text-xs text-ink-soft">{confirmNote}</span>}
+                    </span>
+                  )}
+                </dd>
               </>
             )}
             <dt className="font-bold text-ink">Owner</dt>
             <dd className="text-ink">
               {ownerName}
               <span className="ml-3 inline-flex flex-wrap gap-2">
-                {!c.assigneeId && canClaim && (
-                  <button onClick={() => onClaim(c.id)} className={textLink}>Claim</button>
+                {!c.assigneeId && (canClaim || poolMode) && (
+                  <button onClick={() => onClaim(c.id)} className={textLink}>
+                    {canClaim ? "Claim" : "Open group"}
+                  </button>
                 )}
                 {c.assigneeId === user?.id && (
                   <button onClick={() => onRelease(c.id)} className={textLink}>Release</button>
                 )}
               </span>
+              {poolMode && !c.assigneeId && (
+                <span className="mt-1 block text-xs text-ink-soft">
+                  Claiming opens a Case Group. You can add other pool complaints there.
+                </span>
+              )}
             </dd>
             <dt className="font-bold text-ink">Reported</dt>
             <dd className="text-ink">{formatDate(c.date)}</dd>
@@ -188,6 +218,11 @@ export default function ComplaintDetailDialog({
             <dd className="text-ink">{formatDate(c.updatedAt)}</dd>
           </dl>
 
+          {poolMode ? (
+            <div className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft">
+              Status is {c.status}. Triage happens after claiming, under Assigned Complaints.
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="dlg-status" className={labelClass}>Status</label>
@@ -219,6 +254,7 @@ export default function ComplaintDetailDialog({
               )}
             </div>
           </div>
+          )}
 
           <div>
             <h3 className="text-sm font-bold text-ink">History</h3>
@@ -281,6 +317,22 @@ export default function ComplaintDetailDialog({
               )}
             </div>
             {formError && <p role="alert" className="text-sm font-medium text-red-700">{formError}</p>}
+            {caseGroup && (
+              <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-line bg-canvas px-3 py-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={repeatInGroup}
+                  onChange={(e) => setRepeatInGroup(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-brand"
+                />
+                <span>
+                  Repeat throughout Case Group
+                  <span className="block text-xs text-ink-soft">
+                    {caseGroup.title} · applies to {caseGroup.memberCount} complaint{caseGroup.memberCount === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </label>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <button type="submit" className={secondaryButton}>Append update</button>
               <button type="button" onClick={cancelComposer} className={textLink}>Cancel</button>
