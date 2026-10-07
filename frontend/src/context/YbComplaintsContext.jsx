@@ -30,67 +30,175 @@ export function YbComplaintsProvider({ children }) {
     [complaints]
   );
 
-  // Group-level transfer: ownership and every member's assignee move together.
-  // Representative never becomes an assignee, so only active Aide/Intern qualify.
-  const reassignGroup = useCallback(
-    (groupId, nextId, user) => {
-      const group = caseGroups.find((g) => g.id === groupId);
-      const members = complaints.filter((c) => c.case_group_id === groupId);
-      const next = ybStaff.find((s) => s.id === nextId && s.active);
-      if (!group) return { ok: false, message: "Case group not found." };
-      if (!next || next.role === "Representative")
-        return { ok: false, message: "Pick an active Aide or Intern." };
-      if (members.length === 0) return { ok: false, message: "This case group has no complaints." };
-      setCaseGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, owner_staff_id: nextId } : g)));
-      for (const m of members) {
+  // Per-complaint release with optional propagation. Single transfer detaches
+  // to a new case group owned by the transferee.
+  const releaseComplaint = useCallback(
+    (id, { mode, nextId, reason, repeatInGroup }, user) => {
+      const target = complaints.find((x) => x.id === id);
+      if (!target) return { ok: false, message: "Complaint not found." };
+      if (!isOpenComplaint(target))
+        return { ok: false, message: "Only open complaints can be released." };
+
+      const targetGroup = target.case_group_id
+        ? caseGroups.find((g) => g.id === target.case_group_id) || null
+        : null;
+
+      const isRepresentative = user.role === "Representative";
+      const isOwner = !!target.assigneeId && target.assigneeId === user.id;
+
+      if (mode === "transfer") {
+        const next = ybStaff.find((s) => s.id === nextId && s.active);
+        if (!next || next.role === "Representative")
+          return { ok: false, message: "Pick an active Aide or Intern." };
+        if (!isOwner && !isRepresentative)
+          return { ok: false, message: `Only ${target.assigneeId ? "the owner" : "Representative"} can release.` };
+
+        if (repeatInGroup && targetGroup) {
+          // Move all open members together; stay in group, move owner.
+          const members = complaints.filter(
+            (m) => m.case_group_id === targetGroup.id && isOpenComplaint(m)
+          );
+          if (members.length === 0)
+            return { ok: false, message: "No open members to transfer." };
+          setCaseGroups((prev) =>
+            prev.map((g) => (g.id === targetGroup.id ? { ...g, owner_staff_id: next.id } : g))
+          );
+          for (const m of members) {
+            touch(
+              m.id,
+              { assigneeId: next.id },
+              {
+                by: user.id,
+                at: today(),
+                action: "reassign",
+                detail: `${user.name} transferred ${targetGroup.title} to ${next.name} (shared across case group)`,
+              }
+            );
+          }
+          return {
+            ok: true,
+            count: members.length,
+            groupId: targetGroup.id,
+            message: `${targetGroup.title} transferred to ${next.name} · ${members.length} complaint${members.length === 1 ? "" : "s"}.`,
+          };
+        }
+
+        // Single detach: open new case group for transferee, detach target.
+        const groupId = `cg-${Date.now()}`;
+        const newGroup = {
+          id: groupId,
+          title: target.title,
+          category: target.category,
+          status: "Open",
+          owner_staff_id: next.id,
+        };
+        setCaseGroups((prev) => [...prev, newGroup]);
         touch(
-          m.id,
-          { assigneeId: nextId },
+          target.id,
+          {
+            assigneeId: next.id,
+            case_group_id: groupId,
+            case_group_confirmed: true,
+          },
           {
             by: user.id,
             at: today(),
-            action: "reassign-group",
-            detail: `${user.name} transferred the case group to ${next.name}`,
+            action: "group-assign",
+            detail: `${user.name} moved ${target.title} to new case group ${newGroup.title}`,
           }
         );
-      }
-      return {
-        ok: true,
-        count: members.length,
-        message: `${group.title} transferred to ${next.name} · ${members.length} complaint${members.length === 1 ? "" : "s"}.`,
-      };
-    },
-    [caseGroups, complaints, touch]
-  );
-
-  // End flow: open members are Declined under the chosen reason, group closes.
-  const endGroup = useCallback(
-    (groupId, reason, user) => {
-      if (user.role !== "Representative")
-        return { ok: false, message: "Only Representative can end the flow." };
-      const group = caseGroups.find((g) => g.id === groupId);
-      if (!group) return { ok: false, message: "Case group not found." };
-      if (!reason) return { ok: false, message: "Pick a decline reason." };
-      const openMembers = complaints.filter(
-        (c) => c.case_group_id === groupId && isOpenComplaint(c)
-      );
-      for (const m of openMembers) {
         touch(
-          m.id,
+          target.id,
+          { assigneeId: next.id },
+          {
+            by: user.id,
+            at: today(),
+            action: "reassign",
+            detail: `${user.name} transferred to ${next.name} via new case group ${newGroup.title}`,
+          }
+        );
+
+        // Close old group when no open members remain (all ended or detached).
+        if (targetGroup) {
+          const remainingOpen = complaints.filter(
+            (m) =>
+              m.case_group_id === targetGroup.id &&
+              m.id !== target.id &&
+              isOpenComplaint(m)
+          );
+          if (remainingOpen.length === 0) {
+            setCaseGroups((prev) =>
+              prev.map((g) => (g.id === targetGroup.id ? { ...g, status: "Closed" } : g))
+            );
+          }
+          // Owner unchanged per rule.
+        }
+
+        return {
+          ok: true,
+          count: 1,
+          groupId: groupId,
+          message: `Complaint ${target.ref_no ?? target.id} transferred to ${next.name} in a new case group.`,
+        };
+      }
+
+      if (mode === "end") {
+        if (user.role !== "Representative")
+          return { ok: false, message: "Only Representative can end the flow." };
+        if (!reason) return { ok: false, message: "Pick a decline reason." };
+        if (!isOwner && !isRepresentative)
+          return { ok: false, message: `Only ${target.assigneeId ? "the owner" : "Representative"} can release.` };
+
+        if (repeatInGroup && targetGroup) {
+          const openMembers = complaints.filter(
+            (m) => m.case_group_id === targetGroup.id && isOpenComplaint(m)
+          );
+          if (openMembers.length === 0)
+            return { ok: false, message: "No open members to decline." };
+          for (const m of openMembers) {
+            touch(
+              m.id,
+              { status: "Declined" },
+              { by: user.id, at: today(), action: "decline", detail: `Flow ended: ${reason}` }
+            );
+          }
+          // Every open member declined, so all members are ended now.
+          setCaseGroups((prev) =>
+            prev.map((g) => (g.id === targetGroup.id ? { ...g, status: "Closed" } : g))
+          );
+          return {
+            ok: true,
+            count: openMembers.length,
+            groupId: targetGroup.id,
+            message: `${targetGroup.title} closed · ${openMembers.length} open complaint${openMembers.length === 1 ? "" : "s"} declined.`,
+          };
+        }
+
+        // End single.
+        touch(
+          target.id,
           { status: "Declined" },
           { by: user.id, at: today(), action: "decline", detail: `Flow ended: ${reason}` }
         );
+        if (targetGroup) {
+          const remainingOpen = complaints.filter(
+            (m) => m.case_group_id === targetGroup.id && m.id !== target.id && isOpenComplaint(m)
+          );
+          if (remainingOpen.length === 0) {
+            setCaseGroups((prev) =>
+              prev.map((g) => (g.id === targetGroup.id ? { ...g, status: "Closed" } : g))
+            );
+          }
+        }
+        return {
+          ok: true,
+          count: 1,
+          groupId: targetGroup?.id ?? null,
+          message: `Complaint ${target.ref_no ?? target.id} declined.`,
+        };
       }
-      setCaseGroups((prev) =>
-        prev.map((g) => (g.id === groupId ? { ...g, status: "Closed" } : g))
-      );
-      return {
-        ok: true,
-        count: openMembers.length,
-        message: openMembers.length
-          ? `${group.title} closed · ${openMembers.length} open complaint${openMembers.length === 1 ? "" : "s"} declined.`
-          : `${group.title} closed.`,
-      };
+
+      return { ok: false, message: "Invalid release mode." };
     },
     [caseGroups, complaints, touch]
   );
@@ -245,8 +353,7 @@ export function YbComplaintsProvider({ children }) {
       caseGroups,
       groupMembers,
       touch,
-      reassignGroup,
-      endGroup,
+       releaseComplaint,
       changeStatus,
       confirmMember,
       confirmGroup,
@@ -259,8 +366,7 @@ export function YbComplaintsProvider({ children }) {
       caseGroups,
       groupMembers,
       touch,
-      reassignGroup,
-      endGroup,
+      releaseComplaint,
       changeStatus,
       confirmMember,
       confirmGroup,

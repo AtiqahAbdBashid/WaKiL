@@ -5,10 +5,19 @@ import { Paperclip, X } from "lucide-react";
 
 import Badge from "../ui/Badge";
 import { inputClass, labelClass, secondaryButton, textLink } from "../ui/styles";
-import { formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
+import { END_FLOW_REASONS, formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
 import { citizenName } from "../../data/ybCitizens";
 import { staffName } from "../../data/ybStaff";
+import { isOpenComplaint } from "../../context/YbComplaintsContext";
 import useDialogFocus from "./useDialogFocus";
+
+// "Label: explanation", split for display; the stored string stays verbatim.
+const splitReason = (reason) => {
+  const cut = reason.indexOf(":");
+  return cut === -1
+    ? { label: reason, detail: "" }
+    : { label: reason.slice(0, cut), detail: reason.slice(cut + 2) };
+};
 
 export default function ComplaintDetailDialog({
   complaint: c,
@@ -18,10 +27,13 @@ export default function ComplaintDetailDialog({
   statusOptions,
   poolMode = false,
   caseGroup = null,
+  releaseCandidates = [],
+  canMarkResolved = false,
   onClose,
   onClaim,
   onStatusChange,
   onAddUpdate,
+  onReleaseComplaint,
   onConfirmMember,
 }) {
   const dialogRef = useDialogFocus(!!c);
@@ -31,6 +43,12 @@ export default function ComplaintDetailDialog({
   const [showComposer, setShowComposer] = useState(false);
   const [repeatInGroup, setRepeatInGroup] = useState(true);
   const [confirmNote, setConfirmNote] = useState("");
+  const [showRelease, setShowRelease] = useState(false);
+  const [releaseMode, setReleaseMode] = useState("transfer");
+  const [releaseTo, setReleaseTo] = useState("");
+  const [releaseReason, setReleaseReason] = useState("");
+  const [releaseRepeat, setReleaseRepeat] = useState(true);
+  const [releaseError, setReleaseError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -78,6 +96,56 @@ export default function ComplaintDetailDialog({
     setFormError("");
     setRepeatInGroup(true);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const isRepresentative = user?.role === "Representative";
+  const canRelease = isOwner || isRepresentative;
+
+  const resetRelease = () => {
+    setShowRelease(false);
+    setReleaseMode("transfer");
+    setReleaseTo("");
+    setReleaseReason("");
+    setReleaseRepeat(true);
+    setReleaseError("");
+  };
+
+  const submitRelease = (e) => {
+    e.preventDefault();
+    setReleaseError("");
+    if (!c.assigneeId) {
+      setReleaseError("Unassigned aduan cannot be released. Claim it first.");
+      return;
+    }
+    if (!canRelease) {
+      setReleaseError(`Only ${ownerName} can release.`);
+      return;
+    }
+    if (releaseMode === "transfer" && !releaseTo) {
+      setReleaseError("Pick the Aide or Intern taking this complaint.");
+      return;
+    }
+    if (releaseMode === "end") {
+      if (!canMarkResolved) {
+        setReleaseError("Only Representative can end the flow.");
+        return;
+      }
+      if (!releaseReason) {
+        setReleaseError("Pick a decline reason.");
+        return;
+      }
+    }
+    const result = onReleaseComplaint?.(c.id, {
+      mode: releaseMode,
+      nextId: releaseTo || null,
+      reason: releaseReason || null,
+      repeatInGroup: caseGroup ? releaseRepeat : false,
+    });
+    if (!result?.ok) {
+      setReleaseError(result?.message ?? "Release did not go through.");
+      return;
+    }
+    resetRelease();
   };
 
   return (
@@ -192,7 +260,7 @@ export default function ComplaintDetailDialog({
                 {statusOptions(c).map((s) => <option key={s}>{s}</option>)}
               </select>
               <p className="mt-1 text-xs text-ink-soft">
-                Assignment and release happen at the case group level.
+                Assignment starts at the case group level. Release a single complaint below.
               </p>
             </div>
           )}
@@ -282,6 +350,135 @@ export default function ComplaintDetailDialog({
               </form>
             )}
           </div>
+
+          {!poolMode && onReleaseComplaint && (
+            <div className="space-y-3 border-t border-line pt-4">
+              <h3 className="text-sm font-bold text-ink">Release</h3>
+              {!c.assigneeId ? (
+                <p className="text-sm text-ink-soft">Unassigned aduan has nothing to release. Claim it first.</p>
+              ) : !canRelease ? (
+                <p className="text-sm text-ink-soft">Only {ownerName} can release.</p>
+              ) : !isOpenComplaint(c) ? (
+                <p className="text-sm text-ink-soft">Complaint is closed. Nothing to release.</p>
+              ) : !showRelease ? (
+                <button type="button" onClick={() => setShowRelease(true)} className={secondaryButton}>
+                  Release complaint
+                </button>
+              ) : (
+                <form onSubmit={submitRelease} className="space-y-3">
+                  <fieldset className="space-y-2">
+                    <legend className={labelClass}>What happens to this complaint</legend>
+                    <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-line px-3 py-2 hover:bg-canvas">
+                      <input
+                        type="radio"
+                        name="release-mode"
+                        value="transfer"
+                        checked={releaseMode === "transfer"}
+                        onChange={() => setReleaseMode("transfer")}
+                        className="mt-1 h-4 w-4 accent-brand"
+                      />
+                      <span className="text-sm">
+                        <span className="block font-bold text-ink">Transfer to another staff</span>
+                        <span className="block text-xs text-ink-soft">
+                          Moves to an Aide or Intern. A single transfer opens a new Case Group for the recipient.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-line px-3 py-2 hover:bg-canvas">
+                      <input
+                        type="radio"
+                        name="release-mode"
+                        value="end"
+                        checked={releaseMode === "end"}
+                        onChange={() => setReleaseMode("end")}
+                        className="mt-1 h-4 w-4 accent-brand"
+                      />
+                      <span className="text-sm">
+                        <span className="block font-bold text-ink">End with a reason</span>
+                        <span className="block text-xs text-ink-soft">
+                          {canMarkResolved ? "Declines this complaint under a fixed reason." : "Representative only."}
+                        </span>
+                      </span>
+                    </label>
+                  </fieldset>
+
+                  {releaseMode === "transfer" ? (
+                    <div>
+                      {releaseCandidates.length === 0 ? (
+                        <p className="text-sm text-ink-soft">No other active Aide or Intern to take it.</p>
+                      ) : (
+                        <>
+                          <label htmlFor="dlg-release-to" className={labelClass}>Transfer to</label>
+                          <select
+                            id="dlg-release-to"
+                            value={releaseTo}
+                            onChange={(e) => setReleaseTo(e.target.value)}
+                            className={inputClass}
+                          >
+                            <option value="">Pick staff…</option>
+                            {releaseCandidates.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                            ))}
+                          </select>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <fieldset>
+                      <legend className={labelClass}>Decline reason</legend>
+                      <ul className="max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-line p-2">
+                        {END_FLOW_REASONS.map((r) => {
+                          const { label, detail } = splitReason(r);
+                          return (
+                            <li key={r}>
+                              <label className="flex cursor-pointer items-start gap-2 rounded-xl px-2 py-2 hover:bg-canvas">
+                                <input
+                                  type="radio"
+                                  name="dlg-end-reason"
+                                  checked={releaseReason === r}
+                                  onChange={() => setReleaseReason(r)}
+                                  className="mt-1 h-4 w-4 accent-brand"
+                                />
+                                <span className="min-w-0 text-sm">
+                                  <span className="block font-bold text-ink">{label}</span>
+                                  <span className="block text-xs text-ink-soft">{detail}</span>
+                                </span>
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </fieldset>
+                  )}
+
+                  {caseGroup && (
+                    <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-line bg-canvas px-3 py-2 text-sm text-ink">
+                      <input
+                        type="checkbox"
+                        checked={releaseRepeat}
+                        onChange={(e) => setReleaseRepeat(e.target.checked)}
+                        className="mt-1 h-4 w-4 accent-brand"
+                      />
+                      <span>
+                        Repeat throughout Case Group
+                        <span className="block text-xs text-ink-soft">
+                          {caseGroup.title} · applies to {caseGroup.memberCount} complaint{caseGroup.memberCount === 1 ? "" : "s"}
+                        </span>
+                      </span>
+                    </label>
+                  )}
+
+                  {releaseError && <p role="alert" className="text-sm font-medium text-red-700">{releaseError}</p>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="submit" className={secondaryButton}>
+                      {releaseMode === "transfer" ? "Transfer complaint" : "End complaint"}
+                    </button>
+                    <button type="button" onClick={resetRelease} className={textLink}>Cancel</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
