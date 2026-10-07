@@ -24,6 +24,9 @@ def create_complaint(
     summary,
     confidence,
     manual_review,
+    parliament: str | None = None,
+    dun: str | None = None,
+    image_url: str | None = None,
 ) -> Complaint:
     complaint = Complaint(
         ticket_id=generate_ticket_id(),
@@ -32,6 +35,9 @@ def create_complaint(
         what_happened=what_happened,
         location=location,
         when_text=when_text,
+        parliament=parliament,
+        dun=dun,
+        image_url=image_url,
         category=category,
         priority=priority,
         summary=summary,

@@ -47,6 +47,7 @@ class ChatMessage(Base):
     session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("chat_sessions.id"))
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -64,6 +65,9 @@ class Complaint(Base):
     what_happened: Mapped[str] = mapped_column(Text)
     location: Mapped[str] = mapped_column(String(255))
     when_text: Mapped[str] = mapped_column(String(100))
+    parliament: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    dun: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(50))
     priority: Mapped[str] = mapped_column(String(10))
     summary: Mapped[str] = mapped_column(Text)

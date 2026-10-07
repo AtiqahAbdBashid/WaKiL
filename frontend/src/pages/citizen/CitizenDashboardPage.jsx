@@ -72,8 +72,13 @@ export default function CitizenDashboardPage() {
 
   const askAi = (e) => {
     e.preventDefault()
-    navigate('/citizen/wakil-ai')
+    if (!question.trim()) {
+      navigate('/citizen/wakil-ai')
+      return
+    }
+    navigate('/citizen/wakil-ai', { state: { initialMessage: question } })
   }
+
 
   const rail = (
     <>
@@ -141,16 +146,27 @@ export default function CitizenDashboardPage() {
           </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {quickChips.map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              onClick={() => navigate('/citizen/wakil-ai')}
-              className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              {chip}
-            </button>
-          ))}
+          {quickChips.map((chip) => {
+            const prompts = {
+              'Submit a complaint': 'Saya ingin membuat aduan baharu',
+              'Check status': 'Bagaimana cara semak status aduan saya?',
+              Guide: 'Bagaimanakah sistem WaKiL berfungsi?',
+            }
+            return (
+              <button
+                key={chip}
+                type="button"
+                onClick={() =>
+                  navigate('/citizen/wakil-ai', {
+                    state: { initialMessage: prompts[chip] || chip },
+                  })
+                }
+                className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
+              >
+                {chip}
+              </button>
+            )
+          })}
         </div>
       </form>
     </>

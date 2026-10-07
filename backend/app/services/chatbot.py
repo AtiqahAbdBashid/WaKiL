@@ -1,25 +1,49 @@
 from google.genai import types
 from app.schemas import ComplaintDraft, Classification
 from app.prompts import REQUIRED_FIELDS, CATEGORIES
-from app.services.gemini_client import call_gemini, extract_draft, classify
+from app.services.gemini_client import call_gemini, extract_draft, classify, make_image_part
 from app.services.rag import search
 
 CONFIDENCE_THRESHOLD = 0.6
 
 
-def build_contents(history: list, message: str | None = None) -> list:
+def build_contents(
+    history: list,
+    message: str | None = None,
+    image: str | None = None,
+) -> list:
     contents = []
     for m in history:
         role = "model" if m.role == "assistant" else "user"
-        contents.append(types.Content(role=role, parts=[types.Part(text=m.content)]))
-    if message is not None:
-        contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
+        parts = []
+        if m.content:
+            parts.append(types.Part(text=m.content))
+        img_url = getattr(m, "image_url", None)
+        if img_url:
+            img_part = make_image_part(img_url)
+            if img_part:
+                parts.append(img_part)
+        if parts:
+            contents.append(types.Content(role=role, parts=parts))
+
+    user_parts = []
+    if message:
+        user_parts.append(types.Part(text=message))
+    if image:
+        img_part = make_image_part(image)
+        if img_part:
+            user_parts.append(img_part)
+    if user_parts:
+        contents.append(types.Content(role="user", parts=user_parts))
+
     return contents
 
 
-def get_reply(message: str, history: list) -> str:
+def get_reply(
+    message: str, history: list, image: str | None = None
+) -> tuple[str, bool]:
     context = build_context(message)
-    contents = build_contents(history, message)
+    contents = build_contents(history, message, image=image)
     draft = extract_draft(contents)
     missing = get_missing_fields(draft)
     instruction = build_instruction(missing)
@@ -33,7 +57,9 @@ def get_reply(message: str, history: list) -> str:
             ],
         )
     )
-    return call_gemini(contents)
+    reply_text = call_gemini(contents)
+    can_confirm = len(missing) == 0
+    return reply_text, can_confirm
 
 
 def get_missing_fields(draft: ComplaintDraft) -> list[str]:
@@ -52,6 +78,11 @@ def build_instruction(missing: list[str]) -> str:
             "Do NOT say the complaint has been recorded, submitted or filed, and do NOT give a "
             "ticket number: a ticket is only created when the user presses Confirm."
         )
+    return (
+        f"Still missing required details: {', '.join(missing)}. "
+        "Ask for ONE missing detail politely. Do not ask for information already provided."
+    )
+
 
 
 def apply_fallback(result: Classification) -> tuple[Classification, bool]:

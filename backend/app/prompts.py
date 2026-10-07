@@ -87,6 +87,7 @@ CATEGORIES AND SCOPE:
 CLASSIFICATION RULES:
 - Identify the primary subject and root issue of the complaint.
 - Distinguish municipal infrastructure (roads, streetlights, public amenities) from utility grid supply (tap water supply, power grid blackouts).
+- If an image/photo is provided: Inspect the image carefully to identify the civic issue (e.g. damaged pavement/pothole, blocked drain, uncollected trash, broken streetlight, flood, fallen tree/cables). Even if text is brief or missing, determine the most accurate category and priority based on the image, and write a concise, professional 1-sentence summary describing the problem observed.
 - Set priority:
   * High: Immediate danger to life or safety, active flood entering homes, live fallen wires, or total water outage.
   * Medium: Disruption affecting daily commute, neighborhood services, or regular activities.
