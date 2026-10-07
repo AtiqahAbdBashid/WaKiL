@@ -175,5 +175,27 @@ export const ybInsights = [
 
 export const formatRef = (id) => String(id).padStart(4, "0");
 
+// Prefer the real reference number (e.g. "2026-0001"); fall back to padded id.
+// Accepts a complaint object or a raw id so existing call sites can migrate.
+export const formatDisplayRef = (cOrId) => {
+  if (cOrId && typeof cOrId === "object") return cOrId.ref_no ?? formatRef(cOrId.id);
+  const found = ybComplaints.find((c) => c.id === cOrId);
+  return found?.ref_no ?? formatRef(cOrId);
+};
+
 export const formatDate = (iso) =>
   new Date(iso).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" });
+
+export const formatDateTime = (iso) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString("en-MY", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kuala_Lumpur",
+  });
+};

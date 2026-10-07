@@ -5,7 +5,7 @@ import { MapPin } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import PageTitle from "../../components/ui/PageTitle";
 import Sheet from "../../components/ui/Sheet";
-import { formatDate, formatRef, ybComplaints } from "../../data/ybSample";
+import { formatDate, formatDisplayRef, ybComplaints } from "../../data/ybSample";
 import { ybKawasan } from "../../data/ybKawasan";
 import { aduanPins } from "../../data/aduanPins";
 import { ybApi } from "../../lib/ybApi";
@@ -139,7 +139,7 @@ export default function MapPage() {
             {current.items.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-4 md:px-5">
                 <div className="min-w-0">
-                  <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
+                  <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
                   <p className="mt-0.5 font-bold text-ink">{c.title}</p>
                   <p className="text-sm text-ink-soft">{c.category} · {formatDate(c.date)}</p>
                 </div>

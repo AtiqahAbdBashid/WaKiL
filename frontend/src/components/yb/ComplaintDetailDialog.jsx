@@ -5,7 +5,8 @@ import { Paperclip, X } from "lucide-react";
 
 import Badge from "../ui/Badge";
 import { inputClass, labelClass, secondaryButton, textLink } from "../ui/styles";
-import { formatDate, formatRef } from "../../data/ybSample";
+import { formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
+import { citizenName } from "../../data/ybCitizens";
 import { staffName, ybStaff } from "../../data/ybStaff";
 
 const FOCUSABLE = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
@@ -17,9 +18,15 @@ function useDialogFocus(open) {
     const node = ref.current;
     const previous = document.activeElement;
     node.querySelector(FOCUSABLE)?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const trapTab = (e) => {
       if (e.key !== "Tab") return;
       const items = node.querySelectorAll(FOCUSABLE);
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
       const first = items[0];
       const last = items[items.length - 1];
       if (e.shiftKey && document.activeElement === first) {
@@ -33,6 +40,7 @@ function useDialogFocus(open) {
     node.addEventListener("keydown", trapTab);
     return () => {
       node.removeEventListener("keydown", trapTab);
+      document.body.style.overflow = prevOverflow;
       previous?.focus?.();
     };
   }, [open ]);
@@ -57,6 +65,7 @@ export default function ComplaintDetailDialog({
   const [fileName, setFileName] = useState("");
   const [formError, setFormError] = useState("");
   const [showComposer, setShowComposer] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!c) return;
@@ -92,6 +101,15 @@ export default function ComplaintDetailDialog({
     setFileName("");
     setFormError("");
     setShowComposer(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const cancelComposer = () => {
+    setShowComposer(false);
+    setBody("");
+    setFileName("");
+    setFormError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -104,14 +122,20 @@ export default function ComplaintDetailDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="aduan-dialog-title"
+        aria-describedby="aduan-dialog-body"
         onClick={(e) => e.stopPropagation()}
         className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-4 md:px-5">
           <div className="min-w-0">
-            <p className="tabular text-xs font-semibold text-accent-ink">Ruj. {formatRef(c.id)}</p>
+            <p className="tabular text-xs font-semibold text-accent-ink">Ruj. {formatDisplayRef(c)}</p>
             <h2 id="aduan-dialog-title" className="mt-0.5 text-lg font-extrabold text-ink">{c.title}</h2>
             <p className="mt-1 text-sm text-ink-soft">{c.category} · {c.locality}</p>
+            {c.needsRepresentativeAttention && (
+              <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
+                Flagged for Representative review
+              </p>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Badge>{c.status}</Badge>
@@ -126,7 +150,26 @@ export default function ComplaintDetailDialog({
         </div>
 
         <div className="space-y-6 px-4 py-4 md:px-5">
+          <div>
+            <h3 className="text-sm font-bold text-ink">Report</h3>
+            <p id="aduan-dialog-body" className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+              {c.body?.trim() ? c.body : "No report text."}
+            </p>
+          </div>
+
           <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">
+            <dt className="font-bold text-ink">Reporter</dt>
+            <dd className="text-ink">{citizenName(c.citizen_id)}</dd>
+            <dt className="font-bold text-ink">Occurred</dt>
+            <dd className="tabular text-ink">{formatDateTime(c.time_of_occurrence)}</dd>
+            <dt className="font-bold text-ink">Kawasan</dt>
+            <dd className="text-ink">{c.locality}{c.constituency_kod ? ` · ${c.constituency_kod}` : ""}</dd>
+            {c.case_group_id && (
+              <>
+                <dt className="font-bold text-ink">Case group</dt>
+                <dd className="text-ink">{c.case_group_id}{c.case_group_confirmed ? " · confirmed" : " · tentative"}</dd>
+              </>
+            )}
             <dt className="font-bold text-ink">Owner</dt>
             <dd className="text-ink">
               {ownerName}
@@ -224,6 +267,7 @@ export default function ComplaintDetailDialog({
             <div>
               <label htmlFor="dlg-update-file" className={labelClass}>Attachment</label>
               <input
+                ref={fileInputRef}
                 id="dlg-update-file"
                 type="file"
                 accept="image/*,.pdf,.doc,.docx"
@@ -239,7 +283,7 @@ export default function ComplaintDetailDialog({
             {formError && <p role="alert" className="text-sm font-medium text-red-700">{formError}</p>}
             <div className="flex flex-wrap items-center gap-2">
               <button type="submit" className={secondaryButton}>Append update</button>
-              <button type="button" onClick={() => { setShowComposer(false); setBody(""); setFileName(""); setFormError(""); }} className={textLink}>Cancel</button>
+              <button type="button" onClick={cancelComposer} className={textLink}>Cancel</button>
             </div>
             <p className="text-xs text-ink-soft">Not saved to server yet. Updates stay in this session until the aduan API lands.</p>
               </form>

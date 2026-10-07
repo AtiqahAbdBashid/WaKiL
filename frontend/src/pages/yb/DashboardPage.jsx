@@ -12,7 +12,7 @@ import { ybKawasan } from "../../data/ybKawasan";
 import { aduanPins } from "../../data/aduanPins";
 import { ybApi } from "../../lib/ybApi";
 import { ybComplaints } from "../../data/ybSample";
-import { formatDate, formatRef } from "../../data/ybSample";
+import { formatDate, formatDisplayRef } from "../../data/ybSample";
 import { staffName, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { AduanMixChart, AduanTrendChart } from "../../components/yb/AduanCharts";
@@ -112,7 +112,7 @@ function MyQueueDashboard({ user }) {
               {mineOpen.slice(0, 8).map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
                   <div className="min-w-0">
-                    <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
+                    <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
                     <p className="truncate text-base font-bold text-ink">{c.title}</p>
                     <p className="mt-0.5 text-sm text-ink-soft">
                       {c.category} · {c.locality} · since {formatDate(c.date)}
@@ -141,7 +141,7 @@ function MyQueueDashboard({ user }) {
             <ul className="divide-y divide-line">
               {pool.slice(0, 6).map((c) => (
                 <li key={c.id} className="px-4 py-3 md:px-5">
-                  <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
+                  <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
                   <p className="text-sm font-bold text-ink">{c.title}</p>
                   <p className="text-xs text-ink-soft">{c.category} · {c.locality} · {formatDate(c.date)}</p>
                 </li>
@@ -158,7 +158,7 @@ function MyQueueDashboard({ user }) {
           <ul className="divide-y divide-line">
             {activity.map((h, i) => (
               <li key={`${h.ref}-${h.at}-${i}`} className="px-4 py-3 text-sm md:px-5">
-                <span className="tabular font-semibold text-accent-ink">Ref. {formatRef(h.ref)}</span>{" "}
+                <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(h.ref)}</span>{" "}
                 <span className="font-bold text-ink">{h.title}</span>{" "}
                 <span className="text-ink-soft">· {h.detail} · {formatDate(h.at)}</span>
               </li>

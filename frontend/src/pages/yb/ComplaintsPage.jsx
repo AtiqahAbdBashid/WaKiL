@@ -10,7 +10,7 @@ import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
-import { formatDate, formatRef, ybCategories, ybComplaints, ybStatuses } from "../../data/ybSample";
+import { formatDate, formatDisplayRef, ybCategories, ybComplaints, ybStatuses } from "../../data/ybSample";
 import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 
@@ -33,7 +33,7 @@ export default function ComplaintsPage() {
     (category === "All" || c.category === category) &&
     (owner === "All" ||
       (owner === "Unassigned" ? !c.assigneeId : owner === "Mine" ? c.assigneeId === user?.id : c.assigneeId === owner)) &&
-    (!q || `${c.title} ${c.locality} ${formatRef(c.id)}`.toLowerCase().includes(q));
+    (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
   const pool = complaints.filter((c) => !c.assigneeId && !c.case_group_id && matches(c)).sort((a, b) => b.date.localeCompare(a.date));
   const groupMembers = (groupId) =>
@@ -50,17 +50,17 @@ export default function ComplaintsPage() {
       return;
     }
     touch(id, { assigneeId: user.id }, { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed from pool` });
-    setAnnouncement(`Complaint ${formatRef(id)} claimed by you.`);
+    setAnnouncement(`Complaint ${formatDisplayRef(id)} claimed by you.`);
   };
 
   const release = (id) => {
     touch(id, { assigneeId: null }, { by: user.id, at: today(), action: "release", detail: `${user.name} released to pool` });
-    setAnnouncement(`Complaint ${formatRef(id)} released to pool.`);
+    setAnnouncement(`Complaint ${formatDisplayRef(id)} released to pool.`);
   };
 
   const reassign = (id, nextId) => {
     touch(id, { assigneeId: nextId || null }, { by: user.id, at: today(), action: "reassign", detail: `${user.name} assigned to ${nextId ? staffName(nextId) : "pool"}` });
-    setAnnouncement(`Complaint ${formatRef(id)} assigned to ${nextId ? staffName(nextId) : "pool"}.`);
+    setAnnouncement(`Complaint ${formatDisplayRef(id)} assigned to ${nextId ? staffName(nextId) : "pool"}.`);
   };
 
   const changeStatus = (id, next) => {
@@ -70,7 +70,7 @@ export default function ComplaintsPage() {
     }
     const c = complaints.find((x) => x.id === id);
     touch(id, { status: next }, { by: user.id, at: today(), action: "status", detail: `${c.status} → ${next}` });
-    setAnnouncement(`Complaint ${formatRef(id)} marked ${next}.`);
+    setAnnouncement(`Complaint ${formatDisplayRef(id)} marked ${next}.`);
   };
 
   const clear = () => {
@@ -88,7 +88,7 @@ export default function ComplaintsPage() {
     const c = complaints.find((x) => x.id === id);
     if (!c || !c.case_group_id) return;
     if (!isOpen(c)) {
-      setAnnouncement(`Complaint ${formatRef(id)} is closed and cannot be confirmed.`);
+      setAnnouncement(`Complaint ${formatDisplayRef(id)} is closed and cannot be confirmed.`);
       return;
     }
     touch(
@@ -96,7 +96,7 @@ export default function ComplaintsPage() {
       { case_group_confirmed: true },
       { by: user.id, at: today(), action: "group-confirm", detail: `${user.name} confirmed membership` }
     );
-    setAnnouncement(`Complaint ${formatRef(id)} membership confirmed.`);
+    setAnnouncement(`Complaint ${formatDisplayRef(id)} membership confirmed.`);
   };
 
   const confirmGroup = (groupId) => {
@@ -130,7 +130,7 @@ export default function ComplaintsPage() {
       { updatedAt: today() },
       { by: user.id, at: today(), action: "update", detail, ...(attachmentName ? { attachmentName } : {}) }
     );
-    setAnnouncement(`Update added to ${formatRef(id)}${attachmentName ? ` with ${attachmentName}` : ""}.`);
+    setAnnouncement(`Update added to ${formatDisplayRef(id)}${attachmentName ? ` with ${attachmentName}` : ""}.`);
   };
 
   const statusOptions = (c) =>
@@ -218,7 +218,7 @@ export default function ComplaintsPage() {
                             {c.title}
                           </button>
                           <p className="text-xs text-ink-soft">
-                            <span className="tabular font-semibold text-accent-ink">Ref. {formatRef(c.id)}</span>
+                            <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
                             {" · "}{c.category} · {c.locality} · {c.assigneeId ? staffName(c.assigneeId) : "Pool"}
                             {c.case_group_confirmed ? " · confirmed" : " · tentative"}
                           </p>
@@ -262,7 +262,7 @@ export default function ComplaintsPage() {
               <tbody>
                 {pool.map((c) => (
                   <tr key={c.id} className="border-b border-line align-top last:border-b-0">
-                    <td className="tabular px-4 py-3 font-semibold text-accent-ink md:px-5">{formatRef(c.id)}</td>
+                    <td className="tabular px-4 py-3 font-semibold text-accent-ink md:px-5">{formatDisplayRef(c.id)}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => setSelectedId(c.id)}
@@ -290,7 +290,7 @@ export default function ComplaintsPage() {
                       <select
                         value={c.status}
                         onChange={(e) => changeStatus(c.id, e.target.value)}
-                        aria-label={`Update status of complaint ${formatRef(c.id)}`}
+                        aria-label={`Update status of complaint ${formatDisplayRef(c.id)}`}
                         className={`${inputClass} min-w-36 text-sm`}
                       >
                         {statusOptions(c).map((s) => <option key={s}>{s}</option>)}
@@ -299,7 +299,7 @@ export default function ComplaintsPage() {
                         <select
                           value={c.assigneeId ?? ""}
                           onChange={(e) => reassign(c.id, e.target.value)}
-                          aria-label={`Assign complaint ${formatRef(c.id)}`}
+                          aria-label={`Assign complaint ${formatDisplayRef(c.id)}`}
                           className={`${inputClass} min-w-36 text-sm`}
                         >
                           <option value="">Pool</option>

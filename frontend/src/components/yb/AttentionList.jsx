@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import Badge from "../ui/Badge";
 import { textLink } from "../ui/styles";
-import { formatDate, formatRef, ybComplaints } from "../../data/ybSample";
+import { formatDate, formatDisplayRef, ybComplaints } from "../../data/ybSample";
 
 const STALE_DAYS = 60;
 const staleCut = Date.parse("2026-10-03T00:00:00Z") - STALE_DAYS * 86400000;
@@ -41,7 +41,7 @@ export default function AttentionList() {
         {shown.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-4 md:px-5">
             <div className="min-w-0">
-              <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
+              <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
               <h3 className="mt-0.5 text-base font-bold text-ink">{c.title}</h3>
               <p className="mt-0.5 text-sm text-ink-soft">
                 {c.category} · {c.locality} · {reason(c)}
