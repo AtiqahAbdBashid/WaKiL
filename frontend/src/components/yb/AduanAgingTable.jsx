@@ -114,8 +114,8 @@ export default function AduanAgingTable() {
         </table>
       </div>
       <div className="flex justify-end px-4 pb-3 md:px-5">
-        <Link to="/yb/complaints" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          All complaints
+        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+          Open pool
         </Link>
       </div>
     </Sheet>

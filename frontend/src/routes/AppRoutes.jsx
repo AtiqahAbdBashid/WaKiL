@@ -17,7 +17,8 @@ import CitizenWakilAIPage from '../pages/citizen/WakilAIPage'
 
 import AIInsightsPage from '../pages/yb/AIInsightsPage'
 import AnalyticsPage from '../pages/yb/AnalyticsPage'
-import ComplaintsPage from '../pages/yb/ComplaintsPage'
+import AssignedComplaintsPage from '../pages/yb/AssignedComplaintsPage'
+import ComplaintPoolPage from '../pages/yb/ComplaintPoolPage'
 import YbDashboardPage from '../pages/yb/DashboardPage'
 import FacebookMonitorPage from '../pages/yb/FacebookMonitorPage'
 import MapPage from '../pages/yb/MapPage'
@@ -26,6 +27,7 @@ import SettingsPage from '../pages/yb/SettingsPage'
 import StaffPage from '../pages/yb/StaffPage'
 import WakilAIPage from '../pages/yb/WakilAIPage'
 import { YbAuthProvider } from '../auth/YbAuthContext'
+import { YbComplaintsProvider } from '../context/YbComplaintsContext'
 
 export default function AppRoutes() {
   return (
@@ -47,10 +49,12 @@ export default function AppRoutes() {
         <Route path="profil" element={<ProfilePage />} />
       </Route>
 
-      <Route path="yb" element={<YbAuthProvider><YbLayout /></YbAuthProvider>}>
+      <Route path="yb" element={<YbAuthProvider><YbComplaintsProvider><YbLayout /></YbComplaintsProvider></YbAuthProvider>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<YbDashboardPage />} />
-        <Route path="complaints" element={<ComplaintsPage />} />
+        <Route path="complaints" element={<Navigate to="complaints/pool" replace />} />
+        <Route path="complaints/assigned" element={<AssignedComplaintsPage />} />
+        <Route path="complaints/pool" element={<ComplaintPoolPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="facebook-monitor" element={<FacebookMonitorPage />} />
         <Route path="ai-insights" element={<AIInsightsPage />} />

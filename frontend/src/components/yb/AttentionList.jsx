@@ -58,8 +58,8 @@ export default function AttentionList() {
             {expanded ? "Show less" : `Show all ${items.length}`}
           </button>
         ) : <span />}
-        <Link to="/yb/complaints" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          All complaints
+        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+          Open pool
         </Link>
       </div>
     </div>

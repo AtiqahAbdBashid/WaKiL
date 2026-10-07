@@ -43,8 +43,8 @@ export default function AduanAging() {
       title="Aduans by aging"
       className="h-full"
       action={
-        <Link to="/yb/complaints" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          All complaints
+        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+          Open pool
         </Link>
       }
     >

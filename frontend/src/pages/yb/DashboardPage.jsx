@@ -73,7 +73,7 @@ function MyQueueDashboard({ user }) {
         title={`${firstName}, your queue`}
         subtitle={`${mineOpen.length} open assigned to you · ${pool.length} waiting in pool.`}
         action={
-          <Link to="/yb/complaints" className="inline-flex min-h-11 items-center rounded-2xl bg-brand px-4 text-sm font-bold text-white">
+          <Link to="/yb/complaints/assigned" className="inline-flex min-h-11 items-center rounded-2xl bg-brand px-4 text-sm font-bold text-white">
             Open triage
           </Link>
         }
@@ -100,7 +100,7 @@ function MyQueueDashboard({ user }) {
           title={`My tasks · ${mineOpen.length}`}
           className="lg:col-span-2"
           action={
-            <Link to="/yb/complaints" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+            <Link to="/yb/complaints/assigned" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
               Triage mine
             </Link>
           }
@@ -130,7 +130,7 @@ function MyQueueDashboard({ user }) {
         <Sheet
           title={`Pool · ${pool.length}`}
           action={
-            <Link to="/yb/complaints" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+            <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
               Claim
             </Link>
           }
@@ -298,8 +298,8 @@ function RepresentativeDashboard() {
       title="Needs attention"
       className="h-full"
       action={
-        <Link to="/yb/complaints" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          All complaints
+        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+          Open pool
         </Link>
       }
     >

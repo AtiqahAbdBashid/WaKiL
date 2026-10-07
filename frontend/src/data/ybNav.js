@@ -8,12 +8,14 @@ import {
   Monitor,
   Settings,
   Sparkles,
+  UserCheck,
   Users,
 } from 'lucide-react'
 
 export const ybNavItems = [
   { label: 'Dashboard', to: '/yb/dashboard', icon: LayoutGrid },
-  { label: 'Complaints', to: '/yb/complaints', icon: Inbox },
+  { label: 'Assigned Complaints', to: '/yb/complaints/assigned', icon: UserCheck },
+  { label: 'Complaint Pool', to: '/yb/complaints/pool', icon: Inbox },
   // Users glyph marks the staff roster; `to` matches the SidebarNav link contract.
   { label: 'Staff', to: '/yb/staff', icon: Users },
   { label: 'Facebook Monitor', to: '/yb/facebook-monitor', icon: MessageSquare },
