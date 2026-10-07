@@ -153,7 +153,7 @@ export default function ComplaintPoolPage() {
       </p>
 
       <ComplaintDetailDialog
-        key={selectedId ?? "none"}
+        key={`detail-${selectedId ?? "none"}`}
         complaint={complaints.find((x) => x.id === selectedId) ?? null}
         user={user}
         canClaim={canClaim}
@@ -162,14 +162,12 @@ export default function ComplaintPoolPage() {
         poolMode
         onClose={() => setSelectedId(null)}
         onClaim={onClaimRequest}
-        onRelease={() => {}}
-        onReassign={() => {}}
         onStatusChange={() => {}}
         onAddUpdate={() => {}}
       />
 
       <ClaimCaseGroupDialog
-        key={seedComplaint?.id ?? "none"}
+        key={`claim-${seedComplaint?.id ?? "none"}`}
         seedComplaint={seedComplaint}
         candidates={claimCandidates}
         user={user}

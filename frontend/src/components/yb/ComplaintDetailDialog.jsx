@@ -7,45 +7,8 @@ import Badge from "../ui/Badge";
 import { inputClass, labelClass, secondaryButton, textLink } from "../ui/styles";
 import { formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
 import { citizenName } from "../../data/ybCitizens";
-import { staffName, ybStaff } from "../../data/ybStaff";
-
-const FOCUSABLE = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
-
-function useDialogFocus(open) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open || !ref.current) return;
-    const node = ref.current;
-    const previous = document.activeElement;
-    node.querySelector(FOCUSABLE)?.focus();
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const trapTab = (e) => {
-      if (e.key !== "Tab") return;
-      const items = node.querySelectorAll(FOCUSABLE);
-      if (items.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    node.addEventListener("keydown", trapTab);
-    return () => {
-      node.removeEventListener("keydown", trapTab);
-      document.body.style.overflow = prevOverflow;
-      previous?.focus?.();
-    };
-  }, [open ]);
-  return ref;
-}
+import { staffName } from "../../data/ybStaff";
+import useDialogFocus from "./useDialogFocus";
 
 export default function ComplaintDetailDialog({
   complaint: c,
@@ -57,8 +20,6 @@ export default function ComplaintDetailDialog({
   caseGroup = null,
   onClose,
   onClaim,
-  onRelease,
-  onReassign,
   onStatusChange,
   onAddUpdate,
   onConfirmMember,
@@ -202,9 +163,6 @@ export default function ComplaintDetailDialog({
                     {canClaim ? "Claim" : "Open group"}
                   </button>
                 )}
-                {c.assigneeId === user?.id && (
-                  <button onClick={() => onRelease(c.id)} className={textLink}>Release</button>
-                )}
               </span>
               {poolMode && !c.assigneeId && (
                 <span className="mt-1 block text-xs text-ink-soft">
@@ -223,7 +181,6 @@ export default function ComplaintDetailDialog({
               Status is {c.status}. Triage happens after claiming, under Assigned Complaints.
             </div>
           ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="dlg-status" className={labelClass}>Status</label>
               <select
@@ -234,26 +191,10 @@ export default function ComplaintDetailDialog({
               >
                 {statusOptions(c).map((s) => <option key={s}>{s}</option>)}
               </select>
+              <p className="mt-1 text-xs text-ink-soft">
+                Assignment and release happen at the case group level.
+              </p>
             </div>
-            <div>
-              <label htmlFor="dlg-assignee" className={labelClass}>Assign</label>
-              {canReassign ? (
-                <select
-                  id="dlg-assignee"
-                  value={c.assigneeId ?? ""}
-                  onChange={(e) => onReassign(c.id, e.target.value)}
-                  className={`${inputClass} text-sm`}
-                >
-                  <option value="">Pool</option>
-                  {ybStaff.filter((s) => s.active).map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-xs text-ink-soft">Reassign: Representative/Aide only</p>
-              )}
-            </div>
-          </div>
           )}
 
           <div>

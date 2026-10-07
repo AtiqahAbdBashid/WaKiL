@@ -4,7 +4,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { ybComplaints } from "../data/ybSample";
-import { staffName, ybCaseGroups as initialGroups } from "../data/ybStaff";
+import { ybCaseGroups as initialGroups, ybStaff } from "../data/ybStaff";
 
 const YbComplaintsContext = createContext(null);
 
@@ -30,31 +30,69 @@ export function YbComplaintsProvider({ children }) {
     [complaints]
   );
 
-  const release = useCallback(
-    (id, user) => {
-      touch(
-        id,
-        { assigneeId: null },
-        { by: user.id, at: today(), action: "release", detail: `${user.name} released to pool` }
-      );
+  // Group-level transfer: ownership and every member's assignee move together.
+  // Representative never becomes an assignee, so only active Aide/Intern qualify.
+  const reassignGroup = useCallback(
+    (groupId, nextId, user) => {
+      const group = caseGroups.find((g) => g.id === groupId);
+      const members = complaints.filter((c) => c.case_group_id === groupId);
+      const next = ybStaff.find((s) => s.id === nextId && s.active);
+      if (!group) return { ok: false, message: "Case group not found." };
+      if (!next || next.role === "Representative")
+        return { ok: false, message: "Pick an active Aide or Intern." };
+      if (members.length === 0) return { ok: false, message: "This case group has no complaints." };
+      setCaseGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, owner_staff_id: nextId } : g)));
+      for (const m of members) {
+        touch(
+          m.id,
+          { assigneeId: nextId },
+          {
+            by: user.id,
+            at: today(),
+            action: "reassign-group",
+            detail: `${user.name} transferred the case group to ${next.name}`,
+          }
+        );
+      }
+      return {
+        ok: true,
+        count: members.length,
+        message: `${group.title} transferred to ${next.name} · ${members.length} complaint${members.length === 1 ? "" : "s"}.`,
+      };
     },
-    [touch]
+    [caseGroups, complaints, touch]
   );
 
-  const reassign = useCallback(
-    (id, nextId, user) => {
-      touch(
-        id,
-        { assigneeId: nextId || null },
-        {
-          by: user.id,
-          at: today(),
-          action: "reassign",
-          detail: `${user.name} assigned to ${nextId ? staffName(nextId) : "pool"}`,
-        }
+  // End flow: open members are Declined under the chosen reason, group closes.
+  const endGroup = useCallback(
+    (groupId, reason, user) => {
+      if (user.role !== "Representative")
+        return { ok: false, message: "Only Representative can end the flow." };
+      const group = caseGroups.find((g) => g.id === groupId);
+      if (!group) return { ok: false, message: "Case group not found." };
+      if (!reason) return { ok: false, message: "Pick a decline reason." };
+      const openMembers = complaints.filter(
+        (c) => c.case_group_id === groupId && isOpenComplaint(c)
       );
+      for (const m of openMembers) {
+        touch(
+          m.id,
+          { status: "Declined" },
+          { by: user.id, at: today(), action: "decline", detail: `Flow ended: ${reason}` }
+        );
+      }
+      setCaseGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, status: "Closed" } : g))
+      );
+      return {
+        ok: true,
+        count: openMembers.length,
+        message: openMembers.length
+          ? `${group.title} closed · ${openMembers.length} open complaint${openMembers.length === 1 ? "" : "s"} declined.`
+          : `${group.title} closed.`,
+      };
     },
-    [touch]
+    [caseGroups, complaints, touch]
   );
 
   const changeStatus = useCallback(
@@ -207,8 +245,8 @@ export function YbComplaintsProvider({ children }) {
       caseGroups,
       groupMembers,
       touch,
-      release,
-      reassign,
+      reassignGroup,
+      endGroup,
       changeStatus,
       confirmMember,
       confirmGroup,
@@ -221,8 +259,8 @@ export function YbComplaintsProvider({ children }) {
       caseGroups,
       groupMembers,
       touch,
-      release,
-      reassign,
+      reassignGroup,
+      endGroup,
       changeStatus,
       confirmMember,
       confirmGroup,

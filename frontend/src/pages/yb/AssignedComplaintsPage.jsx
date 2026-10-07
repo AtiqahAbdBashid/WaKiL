@@ -10,9 +10,10 @@ import PageTitle from "../../components/ui/PageTitle";
 import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
+import ReleaseCaseGroupDialog from "../../components/yb/ReleaseCaseGroupDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
 import { formatDisplayRef, ybCategories, ybStatuses } from "../../data/ybSample";
-import { staffName } from "../../data/ybStaff";
+import { staffName, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 
@@ -22,8 +23,8 @@ export default function AssignedComplaintsPage() {
     complaints,
     caseGroups,
     groupMembers,
-    release,
-    reassign,
+    reassignGroup,
+    endGroup,
     changeStatus,
     confirmMember,
     addUpdate,
@@ -34,6 +35,7 @@ export default function AssignedComplaintsPage() {
   const [announcement, setAnnouncement] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [expandedIds, setExpandedIds] = useState([]);
+  const [releaseGroupId, setReleaseGroupId] = useState(null);
 
   const isRepresentative = user?.role === "Representative";
 
@@ -50,14 +52,27 @@ export default function AssignedComplaintsPage() {
   const toggleGroup = (id) =>
     setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const onRelease = (id) => {
-    release(id, user);
-    setAnnouncement(`Complaint ${formatDisplayRef(id)} released to pool.`);
+  const releaseGroup = caseGroups.find((g) => g.id === releaseGroupId) ?? null;
+  const releaseMembers = releaseGroupId ? groupMembers(releaseGroupId) : [];
+  const transferCandidates = ybStaff.filter(
+    (s) =>
+      s.active &&
+      (s.role === "Aide" || s.role === "Intern") &&
+      s.id !== releaseGroup?.owner_staff_id
+  );
+
+  const onTransferGroup = (groupId, nextId) => {
+    const result = reassignGroup(groupId, nextId, user);
+    setAnnouncement(result.message);
+    if (result.ok) setReleaseGroupId(null);
+    return result;
   };
 
-  const onReassign = (id, nextId) => {
-    reassign(id, nextId, user);
-    setAnnouncement(`Complaint ${formatDisplayRef(id)} assigned to ${nextId ? staffName(nextId) : "pool"}.`);
+  const onEndGroupFlow = (groupId, reason) => {
+    const result = endGroup(groupId, reason, user);
+    setAnnouncement(result.message);
+    if (result.ok) setReleaseGroupId(null);
+    return result;
   };
 
   const onStatusChange = (id, next) => {
@@ -173,6 +188,7 @@ export default function AssignedComplaintsPage() {
                       <span className="block text-sm text-ink-soft">
                         {g.category} · {staffName(g.owner_staff_id)} · {members.length} members
                         {tentative > 0 ? ` · ${tentative} tentative` : " · all confirmed"}
+                        {g.status === "Closed" ? " · closed" : ""}
                       </span>
                     </span>
                     <ChevronDown
@@ -182,6 +198,17 @@ export default function AssignedComplaintsPage() {
                   </button>
                   {expanded && (
                     <div id={`group-members-${g.id}`} className="pb-2">
+                      {g.status !== "Closed" &&
+                        (g.owner_staff_id === user?.id || isRepresentative) && (
+                        <div className="flex justify-end py-1">
+                          <button
+                            onClick={() => setReleaseGroupId(g.id)}
+                            className={textLink}
+                          >
+                            Release group
+                          </button>
+                        </div>
+                      )}
                       {members.length === 0 ? (
                         <p className="mt-1 text-sm text-ink-soft">No members yet.</p>
                       ) : shown.length === 0 ? (
@@ -230,7 +257,7 @@ export default function AssignedComplaintsPage() {
       </Sheet>
 
       <ComplaintDetailDialog
-        key={selectedId ?? "none"}
+        key={`detail-${selectedId ?? "none"}`}
         complaint={selected}
         user={user}
         canClaim={canClaim}
@@ -239,11 +266,22 @@ export default function AssignedComplaintsPage() {
         caseGroup={selectedCaseGroup}
         onClose={() => setSelectedId(null)}
         onClaim={() => {}}
-        onRelease={onRelease}
-        onReassign={onReassign}
         onStatusChange={onStatusChange}
         onAddUpdate={onAddUpdate}
         onConfirmMember={onConfirmMember}
+      />
+
+      <ReleaseCaseGroupDialog
+        key={`release-${releaseGroup?.id ?? "none"}`}
+        group={releaseGroup}
+        memberCount={releaseMembers.length}
+        openCount={releaseMembers.filter((m) => isOpenComplaint(m)).length}
+        ownerName={releaseGroup ? staffName(releaseGroup.owner_staff_id) : ""}
+        canMarkResolved={canMarkResolved}
+        candidates={transferCandidates}
+        onTransfer={onTransferGroup}
+        onEndFlow={onEndGroupFlow}
+        onClose={() => setReleaseGroupId(null)}
       />
     </div>
   );

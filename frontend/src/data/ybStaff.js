@@ -21,6 +21,11 @@ export const ybServiceCenter = {
 export const ybCaseGroups = [
   { id: "cg-lights", title: "Street light cluster Taman Sri Muda", category: "Infrastruktur + Jalan Raya", status: "Open", owner_staff_id: "u-representative" },
   { id: "cg-drainage", title: "Seksyen 31 drainage round", category: "Banjir + Saliran", status: "Open", owner_staff_id: "u-representative" },
+  { id: "cg-backlog-u-aide", title: "Backlog #2026-10-0001", category: "Mixed", status: "Open", owner_staff_id: "u-aide" },
+  { id: "cg-backlog-u-aide2", title: "Backlog #2026-10-0002", category: "Mixed", status: "Open", owner_staff_id: "u-aide2" },
+  { id: "cg-backlog-u-intern", title: "Backlog #2026-10-0003", category: "Mixed", status: "Open", owner_staff_id: "u-intern" },
+  { id: "cg-backlog-u-aide3", title: "Backlog #2026-10-0004", category: "Mixed", status: "Open", owner_staff_id: "u-aide3" },
+  { id: "cg-backlog-u-intern2", title: "Backlog #2026-10-0005", category: "Mixed", status: "Open", owner_staff_id: "u-intern2" },
 ];
 
 export const staffName = (id) => ybStaff.find((s) => s.id === id)?.name ?? "Unassigned";
