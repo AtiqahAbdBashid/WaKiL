@@ -1,12 +1,26 @@
 // YB office staff mock. TODO: replace with real API + Google OAuth accounts.
-// ERD gap: no STAFF table yet, so Aide/Intern exist only here. Names are fictional.
+// All staff share the single ADUN Bukit Gasing service center. Names are fictional.
+export const SERVICE_CENTER_ID = "sc-bukit-gasing";
+
 export const ybStaff = [
-  { id: "u-wakil", name: "YB Khairul", role: "Wakil", email: "yb.khairul@parlimen.gov.my", active: true, expiresAt: null, initials: "YB" },
-  { id: "u-aide", name: "Aina Rahman", role: "Aide", email: "aina@parlimen.gov.my", active: true, expiresAt: null, initials: "AR" },
-  { id: "u-aide2", name: "Faizal Omar", role: "Aide", email: "faizal@parlimen.gov.my", active: true, expiresAt: null, initials: "FO" },
-  { id: "u-aide3", name: "Mei Chen", role: "Aide", email: "mei@parlimen.gov.my", active: true, expiresAt: null, initials: "MC" },
-  { id: "u-intern", name: "Danish Lim", role: "Intern", email: "danish@parlimen.gov.my", active: true, expiresAt: "2026-12-31", initials: "DL" },
-  { id: "u-intern2", name: "Sara Ali", role: "Intern", email: "sara@parlimen.gov.my", active: true, expiresAt: "2026-12-31", initials: "SA" },
+  { id: "u-representative", name: "YB Khairul", role: "Representative", email: "yb.khairul@parlimen.gov.my", active: true, expiresAt: null, initials: "YB", service_center_id: SERVICE_CENTER_ID },
+  { id: "u-aide", name: "Aina Rahman", role: "Aide", email: "aina@parlimen.gov.my", active: true, expiresAt: null, initials: "AR", service_center_id: SERVICE_CENTER_ID },
+  { id: "u-aide2", name: "Faizal Omar", role: "Aide", email: "faizal@parlimen.gov.my", active: true, expiresAt: null, initials: "FO", service_center_id: SERVICE_CENTER_ID },
+  { id: "u-aide3", name: "Mei Chen", role: "Aide", email: "mei@parlimen.gov.my", active: true, expiresAt: null, initials: "MC", service_center_id: SERVICE_CENTER_ID },
+  { id: "u-intern", name: "Danish Lim", role: "Intern", email: "danish@parlimen.gov.my", active: true, expiresAt: "2026-12-31", initials: "DL", service_center_id: SERVICE_CENTER_ID },
+  { id: "u-intern2", name: "Sara Ali", role: "Intern", email: "sara@parlimen.gov.my", active: true, expiresAt: "2026-12-31", initials: "SA", service_center_id: SERVICE_CENTER_ID },
+];
+
+export const ybServiceCenter = {
+  id: SERVICE_CENTER_ID,
+  name: "ADUN Bukit Gasing Office",
+  address: "7A, Jalan 52/8, Seksyen 52, 46200 Petaling Jaya, Selangor",
+  constituency_kod: "N.34",
+};
+
+export const ybCaseGroups = [
+  { id: "cg-lights", title: "Street light cluster Taman Sri Muda", category: "Infrastruktur + Jalan Raya", status: "Open", owner_staff_id: "u-representative" },
+  { id: "cg-drainage", title: "Seksyen 31 drainage round", category: "Banjir + Saliran", status: "Open", owner_staff_id: "u-representative" },
 ];
 
 export const staffName = (id) => ybStaff.find((s) => s.id === id)?.name ?? "Unassigned";

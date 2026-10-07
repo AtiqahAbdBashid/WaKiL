@@ -1,4 +1,4 @@
-// Mock staff roster: invite, deactivate, expiry flag. Wakil-only in real backend.
+// Mock staff roster: invite, deactivate, expiry flag. Representative-only in real backend.
 import { useState } from "react";
 import PageTitle from "../../components/ui/PageTitle";
 import SampleNote from "../../components/ui/SampleNote";
@@ -29,11 +29,11 @@ export default function StaffPage() {
 
   const toggle = (id) => setStaff((prev) => prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
 
-  if (!canViewStaff) return <p className="py-10 text-center text-sm text-muted">Staff roster is visible to Wakil only. Switch mock session to YB Khairul.</p>;
+  if (!canViewStaff) return <p className="py-10 text-center text-sm text-muted">Staff roster is visible to Representative only. Switch mock session to YB Khairul.</p>;
 
   return (
     <div className="w-full space-y-8">
-      <PageTitle title="Staff" subtitle="Aide permanent, Intern temporary with expiry. Wakil manages." />
+      <PageTitle title="Staff" subtitle="Aide permanent, Intern temporary with expiry. Representative manages." />
       <SampleNote label="Note:">Mock roster, not saved. Expired + deactivated auto-lose access.</SampleNote>
 
       <Sheet title={`${staff.filter((s) => s.active && !isExpired(s)).length} active`}>
@@ -75,7 +75,7 @@ export default function StaffPage() {
             <button type="submit" disabled={!isStaffManager} className={primaryButton}>Invite</button>
           </div>
         </form>
-        {!isStaffManager && <p className="px-4 pb-4 text-sm text-ink-soft md:px-5">Only Wakil can invite in real backend.</p>}
+        {!isStaffManager && <p className="px-4 pb-4 text-sm text-ink-soft md:px-5">Only Representative can invite in real backend.</p>}
       </Sheet>
     </div>
   );

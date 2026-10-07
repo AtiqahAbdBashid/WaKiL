@@ -18,10 +18,10 @@ const login = (base) =>
     body: JSON.stringify({ email: "yb.khairul@parlimen.gov.my" }),
   }).then((r) => r.json());
 
-test("normalizeKod accepts P108 and P.108", () => {
-  assert.equal(normalizeKod("P108"), "P.108");
-  assert.equal(normalizeKod("P.108"), "P.108");
-  assert.equal(normalizeKod("n40"), "N.40");
+test("normalizeKod accepts P105 and N34", () => {
+  assert.equal(normalizeKod("P105"), "P.105");
+  assert.equal(normalizeKod("P.105"), "P.105");
+  assert.equal(normalizeKod("n34"), "N.34");
 });
 
 test("negeri view Selangor: 22 parlimen, 56 dun", () => {
@@ -29,9 +29,9 @@ test("negeri view Selangor: 22 parlimen, 56 dun", () => {
   assert.equal(negeriView("dun", "Selangor").features.length, 56);
 });
 
-test("kod lookup finds P.108 Shah Alam", () => {
-  const f = kodFeature("parlimen", "P108");
-  assert.equal(f.properties.parlimen, "P.108 Shah Alam");
+test("kod lookup finds N.34 Bukit Gasing", () => {
+  const f = kodFeature("dun", "N34", "Selangor");
+  assert.equal(f.properties.dun, "N.34 Bukit Gasing");
   assert.equal(f.properties.state, "Selangor");
 });
 
@@ -47,17 +47,17 @@ test("GET /api/kawasan/geojson serves negeri view + highlight", async () => {
     assert.equal(negeri.features.length, 22);
 
     const feat = await (
-      await fetch(`${base}/api/kawasan/geojson?level=parlimen&kod=P.108`, { headers: h })
+      await fetch(`${base}/api/kawasan/geojson?level=dun&kod=N.34&state=Selangor`, { headers: h })
     ).json();
-    assert.equal(feat.properties.code_parlimen, "P.108");
+    assert.equal(feat.properties.code_dun, "N.34");
 
-    // Dun kod repeats per state: N.40 alone is ambiguous, with state it resolves.
-    const dunNoState = await fetch(`${base}/api/kawasan/geojson?level=dun&kod=N.40`, { headers: h });
+    // Dun kod repeats per state: N.34 alone is ambiguous, with state it resolves.
+    const dunNoState = await fetch(`${base}/api/kawasan/geojson?level=dun&kod=N.34`, { headers: h });
     assert.equal(dunNoState.status, 400);
     const dun = await (
-      await fetch(`${base}/api/kawasan/geojson?level=dun&kod=N.40&state=Selangor`, { headers: h })
+      await fetch(`${base}/api/kawasan/geojson?level=dun&kod=N.34&state=Selangor`, { headers: h })
     ).json();
-    assert.equal(dun.properties.dun, "N.40 Kota Anggerik");
+    assert.equal(dun.properties.dun, "N.34 Bukit Gasing");
 
     const badLevel = await fetch(`${base}/api/kawasan/geojson?level=negeri&state=Selangor`, { headers: h });
     assert.equal(badLevel.status, 400);

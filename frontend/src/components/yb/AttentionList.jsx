@@ -12,17 +12,17 @@ const staleCut = Date.parse("2026-10-03T00:00:00Z") - STALE_DAYS * 86400000;
 const isStale = (c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= staleCut;
 
 function reason(c) {
-  if (c.needsWakilAttention) return "Flagged for Wakil";
+  if (c.needsRepresentativeAttention) return "Flagged for Representative";
   if (c.status === "Pending" && !c.assigneeId) return `Unassigned since ${formatDate(c.date)}`;
   return `Stale since ${formatDate(c.updatedAt)}`;
 }
 
 const rank = (c) =>
-  c.needsWakilAttention ? 0 : c.status === "Pending" && !c.assigneeId ? 1 : 2;
+  c.needsRepresentativeAttention ? 0 : c.status === "Pending" && !c.assigneeId ? 1 : 2;
 
 function getAttentionList() {
   return ybComplaints
-    .filter((c) => c.needsWakilAttention || (c.status === "Pending" && !c.assigneeId) || isStale(c))
+    .filter((c) => c.needsRepresentativeAttention || (c.status === "Pending" && !c.assigneeId) || isStale(c))
     .sort((a, b) => rank(a) - rank(b) || a.date.localeCompare(b.date));
 }
 
@@ -44,7 +44,7 @@ export default function AttentionList() {
               <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
               <h3 className="mt-0.5 text-base font-bold text-ink">{c.title}</h3>
               <p className="mt-0.5 text-sm text-ink-soft">
-                {c.category} · {c.area} · {reason(c)}
+                {c.category} · {c.locality} · {reason(c)}
               </p>
             </div>
             <Badge>{c.status}</Badge>

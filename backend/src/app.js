@@ -57,7 +57,7 @@ export function createApp(store = createStore()) {
 
   app.post("/api/staff", auth, requireRole(canManageStaff), (req, res) => {
     const { email, role, expiresAt } = req.body ?? {};
-    if (!email || !ROLES.includes(role) || role === "Wakil")
+    if (!email || !ROLES.includes(role) || role === "Representative")
       return res.status(400).json({ error: "email + role Aide/Intern required" });
     if (store.getStaffByEmail(email)) return res.status(409).json({ error: "exists" });
     res.status(201).json({ staff: store.addStaff({ role, email, expiresAt }) });
@@ -76,11 +76,11 @@ export function createApp(store = createStore()) {
     res.json({ aduan: item });
   });
 
-  // Triage: claim/release (self), reassign (Wakil/Aide), status (Wakil-only close).
+  // Triage: claim/release (self), reassign (Representative/Aide), status (Representative-only close).
   app.patch("/api/aduan/:id", auth, (req, res) => {
     const item = store.getAduan(req.params.id);
     if (!item) return res.status(404).json({ error: "not found" });
-    const { assigneeId, status } = req.body ?? {};
+    const { assigneeId, status, case_group_id } = req.body ?? {};
     const me = req.user;
 
     if (assigneeId !== undefined) {
@@ -88,14 +88,16 @@ export function createApp(store = createStore()) {
       const selfOnly = next === me.id || next === null;
       const reassigningOther = !selfOnly && assigneeId !== item.assigneeId;
       if ((reassigningOther || (item.assigneeId && item.assigneeId !== me.id && next !== item.assigneeId)) && !canReassign(me.role))
-        return res.status(403).json({ error: "Wakil/Aide only" });
+        return res.status(403).json({ error: "Representative/Aide only" });
       if (next && !hasAccess(store.getStaff(next)))
         return res.status(400).json({ error: "assignee has no access" });
     }
     if (status !== undefined) {
       if (!isValidStatus(status)) return res.status(400).json({ error: `status in ${STATUSES}` });
-      if (!canSetStatus(me.role, status)) return res.status(403).json({ error: "only Wakil closes" });
+      if (!canSetStatus(me.role, status)) return res.status(403).json({ error: "only Representative closes" });
     }
+    if (case_group_id !== undefined && case_group_id !== null && !store.getCaseGroup(case_group_id))
+      return res.status(400).json({ error: "case group not found" });
 
     const updated = store.mutateAduan(req.params.id, (a, { audit }) => {
       if (assigneeId !== undefined) {
@@ -109,8 +111,59 @@ export function createApp(store = createStore()) {
         a.status = status;
         audit(a, me.id, "status", `${from} → ${status}`);
       }
+      if (case_group_id !== undefined) {
+        a.case_group_id = case_group_id || null;
+        a.case_group_confirmed = false;
+        if (case_group_id) audit(a, me.id, "group-assign", `${me.name} tentatively added to ${case_group_id}`);
+      }
     });
     res.json({ aduan: updated });
+  });
+
+  app.get("/api/service-centers", auth, (_req, res) => res.json({ service_centers: store.listServiceCenters() }));
+
+  // Case groups: Representative/Aide create + confirm; Intern denied.
+  // Confirm validates members are still open and audits group-confirm.
+  app.get("/api/case-groups", auth, (_req, res) => res.json({ case_groups: store.listCaseGroups() }));
+  app.post("/api/case-groups", auth, (req, res) => {
+    if (!canReassign(req.user.role)) return res.status(403).json({ error: "Representative/Aide only" });
+    const { title, category } = req.body ?? {};
+    if (!title) return res.status(400).json({ error: "title required" });
+    res.status(201).json({ case_group: store.createCaseGroup({ title, category, owner_staff_id: req.user.id }) });
+  });
+  app.post("/api/case-groups/:id/confirm", auth, (req, res) => {
+    if (!canReassign(req.user.role)) return res.status(403).json({ error: "Representative/Aide only" });
+    const group = store.getCaseGroup(req.params.id);
+    if (!group) return res.status(404).json({ error: "not found" });
+    const ids = req.body?.complaintIds ?? group.memberIds;
+    const confirmed = [];
+    for (const id of ids) {
+      const item = store.getAduan(id);
+      if (!item || item.case_group_id !== group.id) return res.status(400).json({ error: `complaint ${id} not in group` });
+      if (item.status === "Resolved" || item.status === "Declined")
+        return res.status(400).json({ error: `complaint ${id} closed` });
+      store.mutateAduan(id, (a, { audit }) => {
+        a.case_group_confirmed = true;
+        audit(a, req.user.id, "group-confirm", `${req.user.name} confirmed in ${group.title}`);
+      });
+      confirmed.push(id);
+    }
+    res.json({ case_group: store.getCaseGroup(group.id), confirmed });
+  });
+  app.post("/api/case-groups/:id/claim-all", auth, (req, res) => {
+    const group = store.getCaseGroup(req.params.id);
+    if (!group) return res.status(404).json({ error: "not found" });
+    const claimed = [];
+    for (const id of group.memberIds) {
+      const item = store.getAduan(id);
+      if (!item || item.assigneeId || item.status === "Resolved" || item.status === "Declined") continue;
+      store.mutateAduan(id, (a, { audit }) => {
+        a.assigneeId = req.user.id;
+        audit(a, req.user.id, "claim", `${req.user.name} claimed from pool via ${group.title}`);
+      });
+      claimed.push(id);
+    }
+    res.json({ case_group: store.getCaseGroup(group.id), claimed });
   });
 
   app.get("/api/kawasan", auth, (_req, res) => res.json({ kawasan: store.getKawasan() }));

@@ -1,11 +1,29 @@
-import { hotspots } from '../../data/ybMock'
+import { ybComplaints } from '../../data/ybSample'
 
 // Stylised stand-in for a real map; swap for a map library when the Map page is built.
+// Hotspots derived from open complaints per locality.
+const counts = [...new Set(ybComplaints.map((c) => c.locality))]
+  .map((locality) => ({
+    locality,
+    open: ybComplaints.filter((c) => c.locality === locality && c.status !== 'Resolved' && c.status !== 'Declined').length,
+  }))
+  .sort((a, b) => b.open - a.open)
+  .slice(0, 4)
+
+const slots = [
+  { x: 56, y: 62, r: 15, color: 'bg-accent' },
+  { x: 22, y: 42, r: 9, color: 'bg-accent' },
+  { x: 78, y: 26, r: 7, color: 'bg-mint' },
+  { x: 85, y: 76, r: 8, color: 'bg-violet' },
+]
+
+const hotspots = counts.map((c, i) => ({ area: c.locality, hot: i === 0, ...slots[i % slots.length] }))
+
 export default function HeatmapPreview() {
   return (
     <div
       role="img"
-      aria-label="Complaint heatmap. Highest concentration in Section 25, then Taman Sri Muda."
+      aria-label={`Complaint heatmap. Highest concentration in ${hotspots[0]?.area ?? 'the constituency'}.`}
       className="relative h-56 overflow-hidden rounded-3xl border border-line bg-[#eef3fd]"
     >
       <svg viewBox="0 0 100 60" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">

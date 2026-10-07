@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 
 import { ybNavItems } from '../../data/ybNav'
-import { watchedAreas, ybUser } from '../../data/ybMock'
+import { ybComplaints } from '../../data/ybSample'
 import { useYbAuth } from '../../auth/YbAuthContext'
 import SidebarNav from '../dashboard/SidebarNav'
 
@@ -12,12 +12,24 @@ const dotTone = {
   mint: 'border-mint',
 }
 
+const tones = ['brand', 'accent', 'mint']
+
+// Top localities by open complaints, derived from sample data.
+const watchedAreas = [...new Set(ybComplaints.map((c) => c.locality))]
+  .map((name) => ({
+    name,
+    open: ybComplaints.filter((c) => c.locality === name && c.status !== 'Resolved' && c.status !== 'Declined').length,
+  }))
+  .sort((a, b) => b.open - a.open)
+  .slice(0, 3)
+  .map((a, i) => ({ name: a.name, tone: tones[i % tones.length] }))
+
 export default function YbSidebar() {
   const { user: authUser, canViewStaff } = useYbAuth()
   const items = canViewStaff ? ybNavItems : ybNavItems.filter((item) => item.to !== '/yb/staff')
   const user = authUser
-    ? { ...ybUser, name: authUser.name, initials: authUser.initials, role: authUser.role }
-    : ybUser
+    ? { name: authUser.name, initials: authUser.initials, role: authUser.role }
+    : { name: 'Service Officer', initials: 'SO', role: 'YB Office' }
   return (
     <SidebarNav
       tagline="People's Voice, Representative's Mandate"

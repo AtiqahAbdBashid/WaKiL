@@ -13,20 +13,19 @@ import { ybApi } from "../../lib/ybApi";
 const KawasanMap = lazy(() => import("../../components/yb/KawasanMap"));
 
 const LEVELS = [
-  { level: "parlimen", kod: ybKawasan.kod, codeKey: "code_parlimen" },
-  { level: "dun", kod: ybKawasan.dun.split(" ")[0], codeKey: "code_dun" },
+  { level: "dun", kod: ybKawasan.kod, codeKey: "code_dun" },
 ];
 
-const areas = [...new Set(ybComplaints.map((c) => c.area))]
-  .map((area) => {
-    const items = ybComplaints.filter((c) => c.area === area);
-    return { area, items, open: items.filter((c) => c.status !== "Resolved").length };
+const areas = [...new Set(ybComplaints.map((c) => c.locality))]
+  .map((locality) => {
+    const items = ybComplaints.filter((c) => c.locality === locality);
+    return { area: locality, items, open: items.filter((c) => c.status !== "Resolved").length };
   })
   .sort((a, b) => b.open - a.open);
 
 export default function MapPage() {
   const [selected, setSelected] = useState(areas[0]?.area ?? "");
-  const [level, setLevel] = useState("parlimen");
+  const [level, setLevel] = useState("dun");
   const [geo, setGeo] = useState({});
   const [pinsByLevel, setPinsByLevel] = useState({});
   const current = areas.find((a) => a.area === selected);

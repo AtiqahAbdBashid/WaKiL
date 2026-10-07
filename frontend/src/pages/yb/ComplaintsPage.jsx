@@ -1,4 +1,6 @@
-// Aduan triage: self-claim from pool (Aide/Intern), release, reassign (Wakil/Aide), status with history.
+// Aduan triage: self-claim from pool (Aide/Intern), release, reassign (Representative/Aide), status with history.
+// Pool list holds unassigned + ungrouped complaints; case groups hold tentative
+// members until Representative/Aide confirm them, then claim-all assigns the group.
 import { useState } from "react";
 import { Search } from "lucide-react";
 
@@ -9,10 +11,11 @@ import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
 import { formatDate, formatRef, ybCategories, ybComplaints, ybStatuses } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
+import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const isOpen = (c) => c.status === "Pending" || c.status === "In Progress";
 
 export default function ComplaintsPage() {
   const { user, canClaim, canReassign, canMarkResolved } = useYbAuth();
@@ -25,16 +28,16 @@ export default function ComplaintsPage() {
   const [selectedId, setSelectedId] = useState(null);
 
   const q = query.trim().toLowerCase();
-  const results = complaints
-    .filter(
-      (c) =>
-        (status === "All" || c.status === status) &&
-        (category === "All" || c.category === category) &&
-        (owner === "All" ||
-          (owner === "Unassigned" ? !c.assigneeId : owner === "Mine" ? c.assigneeId === user?.id : c.assigneeId === owner)) &&
-        (!q || `${c.title} ${c.area} ${formatRef(c.id)}`.toLowerCase().includes(q))
-    )
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const matches = (c) =>
+    (status === "All" || c.status === status) &&
+    (category === "All" || c.category === category) &&
+    (owner === "All" ||
+      (owner === "Unassigned" ? !c.assigneeId : owner === "Mine" ? c.assigneeId === user?.id : c.assigneeId === owner)) &&
+    (!q || `${c.title} ${c.locality} ${formatRef(c.id)}`.toLowerCase().includes(q));
+
+  const pool = complaints.filter((c) => !c.assigneeId && !c.case_group_id && matches(c)).sort((a, b) => b.date.localeCompare(a.date));
+  const groupMembers = (groupId) =>
+    complaints.filter((c) => c.case_group_id === groupId).sort((a, b) => b.date.localeCompare(a.date));
 
   const touch = (id, patch, entry) =>
     setComplaints((prev) =>
@@ -43,7 +46,7 @@ export default function ComplaintsPage() {
 
   const claim = (id) => {
     if (!canClaim) {
-      setAnnouncement("Wakil assigns via reassign list, no pool claim.");
+      setAnnouncement("Representative assigns via reassign list, no pool claim.");
       return;
     }
     touch(id, { assigneeId: user.id }, { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed from pool` });
@@ -62,7 +65,7 @@ export default function ComplaintsPage() {
 
   const changeStatus = (id, next) => {
     if (next === "Resolved" && !canMarkResolved) {
-      setAnnouncement("Only Wakil can mark Resolved in this mock.");
+      setAnnouncement("Only Representative can mark Resolved in this mock.");
       return;
     }
     const c = complaints.find((x) => x.id === id);
@@ -75,6 +78,50 @@ export default function ComplaintsPage() {
     setCategory("All");
     setOwner("All");
     setQuery("");
+  };
+
+  const confirmMember = (id) => {
+    if (!canReassign) {
+      setAnnouncement("Only Representative or Aide can confirm case group members.");
+      return;
+    }
+    const c = complaints.find((x) => x.id === id);
+    if (!c || !c.case_group_id) return;
+    if (!isOpen(c)) {
+      setAnnouncement(`Complaint ${formatRef(id)} is closed and cannot be confirmed.`);
+      return;
+    }
+    touch(
+      id,
+      { case_group_confirmed: true },
+      { by: user.id, at: today(), action: "group-confirm", detail: `${user.name} confirmed membership` }
+    );
+    setAnnouncement(`Complaint ${formatRef(id)} membership confirmed.`);
+  };
+
+  const confirmGroup = (groupId) => {
+    const members = groupMembers(groupId).filter((c) => !c.case_group_confirmed && isOpen(c));
+    if (members.length === 0) {
+      setAnnouncement("Nothing tentative to confirm in this group.");
+      return;
+    }
+    for (const m of members) confirmMember(m.id);
+  };
+
+  const claimAll = (groupId) => {
+    const members = groupMembers(groupId).filter((c) => !c.assigneeId && isOpen(c));
+    if (members.length === 0) {
+      setAnnouncement("Nothing unassigned to claim in this group.");
+      return;
+    }
+    for (const m of members) {
+      touch(
+        m.id,
+        { assigneeId: user.id },
+        { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed via case group` }
+      );
+    }
+    setAnnouncement(`${members.length} complaints claimed by you.`);
   };
 
   const addUpdate = (id, { detail, attachmentName }) => {
@@ -92,7 +139,7 @@ export default function ComplaintsPage() {
   return (
     <div className="w-full space-y-8">
       <PageTitle title="Complaints" subtitle="Claim from pool (Aide/Intern), reassign, update status. History tracked per aduan." />
-      <SampleNote label="Note:">Mock multi-staff triage. Aide/Intern self-claim, Wakil/Aide reassign, only Wakil marks Resolved.</SampleNote>
+      <SampleNote label="Note:">Mock multi-staff triage. Aide/Intern self-claim, Representative/Aide reassign and confirm case groups, only Representative marks Resolved.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_2fr]">
         <div>
@@ -122,7 +169,7 @@ export default function ComplaintsPage() {
           <label htmlFor="search" className={labelClass}>Search</label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
-            <input id="search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Title, area or reference" className={`${inputClass} pl-9`} />
+            <input id="search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Title, locality or reference" className={`${inputClass} pl-9`} />
           </div>
         </div>
       </div>
@@ -130,10 +177,74 @@ export default function ComplaintsPage() {
       <p role="status" className="sr-only">{announcement}</p>
       {announcement && <p className="text-sm font-bold text-brand">{announcement}</p>}
 
-      <Sheet title={`${results.length} of ${complaints.length} complaints`}>
-        {results.length === 0 ? (
+      <Sheet title={`Case groups · ${ybCaseGroups.length}`}>
+        <ul className="divide-y divide-line">
+          {ybCaseGroups.map((g) => {
+            const members = groupMembers(g.id);
+            const tentative = members.filter((c) => !c.case_group_confirmed).length;
+            return (
+              <li key={g.id} className="px-4 py-4 md:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold text-ink">{g.title}</p>
+                    <p className="text-sm text-ink-soft">
+                      {g.category} · {staffName(g.owner_staff_id)} · {members.length} members
+                      {tentative > 0 ? ` · ${tentative} tentative` : " · all confirmed"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {canReassign && tentative > 0 && (
+                      <button onClick={() => confirmGroup(g.id)} className={textLink}>
+                        Confirm {tentative}
+                      </button>
+                    )}
+                    <button onClick={() => claimAll(g.id)} className={textLink}>
+                      Claim all
+                    </button>
+                  </div>
+                </div>
+                {members.length === 0 ? (
+                  <p className="mt-2 text-sm text-ink-soft">No members yet.</p>
+                ) : (
+                  <ul className="mt-2 divide-y divide-line border-t border-line">
+                    {members.map((c) => (
+                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                        <div className="min-w-0">
+                          <button
+                            onClick={() => setSelectedId(c.id)}
+                            aria-haspopup="dialog"
+                            className="inline-flex min-h-11 items-center py-1 text-left font-bold text-ink underline decoration-2 underline-offset-4 hover:text-brand"
+                          >
+                            {c.title}
+                          </button>
+                          <p className="text-xs text-ink-soft">
+                            <span className="tabular font-semibold text-accent-ink">Ref. {formatRef(c.id)}</span>
+                            {" · "}{c.category} · {c.locality} · {c.assigneeId ? staffName(c.assigneeId) : "Pool"}
+                            {c.case_group_confirmed ? " · confirmed" : " · tentative"}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Badge>{c.status}</Badge>
+                          {!c.case_group_confirmed && canReassign && isOpen(c) && (
+                            <button onClick={() => confirmMember(c.id)} className={textLink}>
+                              Confirm
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </Sheet>
+
+      <Sheet title={`Unassigned pool · ${pool.length} complaints`}>
+        {pool.length === 0 ? (
           <div className="space-y-3 px-4 py-10 text-center md:px-5">
-            <p className="text-base text-ink-soft">No complaints match these filters.</p>
+            <p className="text-base text-ink-soft">No unassigned complaints match these filters.</p>
             <button onClick={clear} className={textLink}>Clear filters</button>
           </div>
         ) : (
@@ -149,7 +260,7 @@ export default function ComplaintsPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((c) => (
+                {pool.map((c) => (
                   <tr key={c.id} className="border-b border-line align-top last:border-b-0">
                     <td className="tabular px-4 py-3 font-semibold text-accent-ink md:px-5">{formatRef(c.id)}</td>
                     <td className="px-4 py-3">
@@ -160,7 +271,7 @@ export default function ComplaintsPage() {
                       >
                         {c.title}
                       </button>
-                      <p className="text-ink-soft">{c.category} · {c.area}</p>
+                      <p className="text-ink-soft">{c.category} · {c.locality}</p>
                       {(c.history ?? []).length > 0 && (
                         <p className="mt-1 text-xs text-ink-soft">
                           {(c.history ?? []).slice(-2).map((h) => `${formatDate(h.at)} ${staffName(h.by)}: ${h.detail}`).join(" · ")}
@@ -195,7 +306,7 @@ export default function ComplaintsPage() {
                           {ybStaff.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name} · {s.role}</option>)}
                         </select>
                       ) : (
-                        <p className="text-xs text-ink-soft">Reassign: Wakil/Aide only</p>
+                        <p className="text-xs text-ink-soft">Reassign: Representative/Aide only</p>
                       )}
                     </td>
                   </tr>

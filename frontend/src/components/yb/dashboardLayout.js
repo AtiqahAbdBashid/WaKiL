@@ -1,4 +1,4 @@
-// Wakil dashboard widget registry + persisted layout helpers.
+// Representative dashboard widget registry + persisted layout helpers.
 // Order/hide state lives here so DashboardPage stays lean.
 export const DASHBOARD_WIDGETS = [
   { id: "kawasan", label: "Kawasan map", span: "lg:col-span-6" },

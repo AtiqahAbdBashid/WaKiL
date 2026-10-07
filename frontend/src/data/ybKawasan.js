@@ -1,13 +1,13 @@
-// Office Kawasan scope: one Kod_parlimen OR one Kod_DUN per office.
+// Office Kawasan scope: one Kod DUN for this office.
 // Map defaults to state view with this boundary highlighted.
 // Boundaries served by backend from peninsular 2018 delimitation (lake.electiondata.my, CC0).
 export const ybKawasan = {
-  level: "parlimen",
-  kod: "P.108",
-  name: "Shah Alam",
+  level: "dun",
+  kod: "N.34",
+  name: "Bukit Gasing",
   state: "Selangor",
-  dun: "N.40 Kota Anggerik",
-  geojsonRef: "peninsular_2018_parlimen.geojson",
+  dun: "N.34 Bukit Gasing",
+  geojsonRef: "peninsular_2018_dun.geojson",
 };
 
 // Simplified placeholder boundary (not real coordinates).

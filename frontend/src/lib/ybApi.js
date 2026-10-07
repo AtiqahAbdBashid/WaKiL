@@ -31,6 +31,13 @@ export const ybApi = {
   patchAduan: (id, patch) =>
     call(`/aduan/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then((r) => r.aduan),
   kawasan: () => call("/kawasan").then((r) => r.kawasan),
+  serviceCenters: () => call("/service-centers").then((r) => r.service_centers),
+  caseGroups: () => call("/case-groups").then((r) => r.case_groups),
+  createCaseGroup: (payload) =>
+    call("/case-groups", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.case_group),
+  confirmCaseGroup: (id, complaintIds) =>
+    call(`/case-groups/${id}/confirm`, { method: "POST", body: JSON.stringify({ complaintIds }) }),
+  claimAllCaseGroup: (id) => call(`/case-groups/${id}/claim-all`, { method: "POST" }),
   kawasanGeojson: ({ level, state, kod }) => {
     const q = new URLSearchParams({ level });
     if (state) q.set("state", state);

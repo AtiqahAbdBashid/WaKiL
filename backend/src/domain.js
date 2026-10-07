@@ -10,7 +10,7 @@ export const LEGACY_STATUS_MAP = {
   Resolved: "Resolved",
 };
 
-export const ROLES = ["Wakil", "Aide", "Intern"];
+export const ROLES = ["Representative", "Aide", "Intern"];
 
 export const normalizeStatus = (s) => LEGACY_STATUS_MAP[s] ?? s;
 
@@ -22,17 +22,17 @@ export const isExpired = (staff, now = new Date()) =>
 export const hasAccess = (staff, now = new Date()) =>
   !!staff && staff.active && !isExpired(staff, now);
 
-// Only Wakil closes aduan (Resolved/Declined). Aide + Intern work
+// Only Representative closes aduan (Resolved/Declined). Aide + Intern work
 // Pending/In Progress only.
 export const canSetStatus = (role, status) => {
   if (!isValidStatus(status)) return false;
-  if (status === "Resolved" || status === "Declined") return role === "Wakil";
-  return role === "Wakil" || role === "Aide" || role === "Intern";
+  if (status === "Resolved" || status === "Declined") return role === "Representative";
+  return role === "Representative" || role === "Aide" || role === "Intern";
 };
 
-// Wakil + Aide reassign anyone. Intern touches own claim only.
-export const canReassign = (role) => role === "Wakil" || role === "Aide";
+// Representative + Aide reassign anyone. Intern touches own claim only.
+export const canReassign = (role) => role === "Representative" || role === "Aide";
 
-export const canManageStaff = (role) => role === "Wakil";
+export const canManageStaff = (role) => role === "Representative";
 
-export const canViewStaff = (role) => role === "Wakil";
+export const canViewStaff = (role) => role === "Representative";

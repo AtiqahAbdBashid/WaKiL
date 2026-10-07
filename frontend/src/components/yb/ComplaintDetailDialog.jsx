@@ -111,7 +111,7 @@ export default function ComplaintDetailDialog({
           <div className="min-w-0">
             <p className="tabular text-xs font-semibold text-accent-ink">Ruj. {formatRef(c.id)}</p>
             <h2 id="aduan-dialog-title" className="mt-0.5 text-lg font-extrabold text-ink">{c.title}</h2>
-            <p className="mt-1 text-sm text-ink-soft">{c.category} · {c.area}</p>
+            <p className="mt-1 text-sm text-ink-soft">{c.category} · {c.locality}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Badge>{c.status}</Badge>
@@ -172,7 +172,7 @@ export default function ComplaintDetailDialog({
                   ))}
                 </select>
               ) : (
-                <p className="text-xs text-ink-soft">Reassign: Wakil/Aide only</p>
+                <p className="text-xs text-ink-soft">Reassign: Representative/Aide only</p>
               )}
             </div>
           </div>

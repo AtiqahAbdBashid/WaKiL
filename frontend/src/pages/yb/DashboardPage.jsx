@@ -1,4 +1,4 @@
-// YB home: office overview for Wakil, personal queue for Aide and Intern.
+// YB home: office overview for Representative, personal queue for Aide and Intern.
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Eye, EyeOff, MapPin, Pencil, RotateCcw } from "lucide-react";
@@ -35,7 +35,7 @@ const AttentionList = lazy(() => import("../../components/yb/AttentionList"));
 export default function DashboardPage() {
   const { user } = useYbAuth();
   if (user?.role === "Aide" || user?.role === "Intern") return <MyQueueDashboard user={user} />;
-  return <WakilDashboard key={user?.id ?? "anon"} />;
+  return <RepresentativeDashboard key={user?.id ?? "anon"} />;
 }
 
 const STALE_CUT = Date.parse("2026-10-03T00:00:00Z") - 60 * 86400000;
@@ -48,7 +48,7 @@ function MyQueueDashboard({ user }) {
   const mine = useMemo(() => ybComplaints.filter((c) => c.assigneeId === user.id), [user.id]);
   const mineOpen = useMemo(() => mine.filter(isOpen).sort((a, b) => a.date.localeCompare(b.date)), [mine]);
   const mineStale = useMemo(() => mine.filter(isStale), [mine]);
-  const mineFlagged = useMemo(() => mine.filter((c) => c.needsWakilAttention), [mine]);
+  const mineFlagged = useMemo(() => mine.filter((c) => c.needsRepresentativeAttention), [mine]);
   const pool = useMemo(
     () => ybComplaints.filter((c) => !c.assigneeId && c.status === "Pending").sort((a, b) => a.date.localeCompare(b.date)),
     []
@@ -64,7 +64,7 @@ function MyQueueDashboard({ user }) {
     { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress` },
     { label: "Gone stale", value: mineStale.length, hint: "In Progress untouched 60d+" },
     { label: "In pool to claim", value: pool.length, hint: "Unassigned Pending" },
-    { label: "With Wakil", value: mineFlagged.length, hint: "Flagged, awaiting review" },
+    { label: "With Representative", value: mineFlagged.length, hint: "Flagged, awaiting review" },
   ];
 
   return (
@@ -81,7 +81,7 @@ function MyQueueDashboard({ user }) {
       <SampleNote label="Note:">This dashboard uses sample data until the complaint system is connected.</SampleNote>
       {isIntern && (
         <p className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft md:px-5">
-          Triage only. Claim from pool and move Pending to In Progress. Resolved and reassign stay with Wakil and Aide.
+          Triage only. Claim from pool and move Pending to In Progress. Resolved and reassign stay with Representative and Aide.
         </p>
       )}
 
@@ -115,9 +115,9 @@ function MyQueueDashboard({ user }) {
                     <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
                     <p className="truncate text-base font-bold text-ink">{c.title}</p>
                     <p className="mt-0.5 text-sm text-ink-soft">
-                      {c.category} · {c.area} · since {formatDate(c.date)}
+                      {c.category} · {c.locality} · since {formatDate(c.date)}
                       {isStale(c) ? " · stale" : ""}
-                      {c.needsWakilAttention ? " · with Wakil" : ""}
+                      {c.needsRepresentativeAttention ? " · with Representative" : ""}
                     </p>
                   </div>
                   <span className="shrink-0 rounded-full border border-line px-2 py-1 text-xs font-bold text-ink-soft">{c.status}</span>
@@ -143,7 +143,7 @@ function MyQueueDashboard({ user }) {
                 <li key={c.id} className="px-4 py-3 md:px-5">
                   <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatRef(c.id)}</p>
                   <p className="text-sm font-bold text-ink">{c.title}</p>
-                  <p className="text-xs text-ink-soft">{c.category} · {c.area} · {formatDate(c.date)}</p>
+                  <p className="text-xs text-ink-soft">{c.category} · {c.locality} · {formatDate(c.date)}</p>
                 </li>
               ))}
             </ul>
@@ -170,7 +170,7 @@ function MyQueueDashboard({ user }) {
   );
 }
 
-function WakilDashboard() {
+function RepresentativeDashboard() {
   const { user } = useYbAuth();
   const key = layoutKey(user?.id);
   const workload = useMemo(
@@ -344,7 +344,7 @@ function WakilDashboard() {
           </tr>
         </tfoot>
       </table>
-      <p className="px-4 py-2 text-xs text-ink-soft md:px-5">{staffName("u-wakil")} holds none; closes only.</p>
+      <p className="px-4 py-2 text-xs text-ink-soft md:px-5">{staffName("u-representative")} holds none; closes only.</p>
     </Sheet>
   );
 
@@ -368,8 +368,8 @@ function WakilDashboard() {
             <dl className="flex items-start gap-3 rounded-2xl border border-line px-4 py-3 md:min-w-80">
               <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
               <div>
-                <dt className="text-sm font-bold text-ink">Parliament / State seat</dt>
-                <dd className="tabular mt-0.5 text-sm font-semibold text-accent-ink">P.108 Shah Alam / N.40 Kota Anggerik</dd>
+                <dt className="text-sm font-bold text-ink">State seat</dt>
+                <dd className="tabular mt-0.5 text-sm font-semibold text-accent-ink">N.34 Bukit Gasing</dd>
               </div>
             </dl>
             {isEditing ? (
