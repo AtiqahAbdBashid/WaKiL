@@ -5,7 +5,7 @@ import { ybComplaints } from '../../data/ybSample'
 const counts = [...new Set(ybComplaints.map((c) => c.locality))]
   .map((locality) => ({
     locality,
-    open: ybComplaints.filter((c) => c.locality === locality && c.status !== 'Resolved' && c.status !== 'Declined').length,
+    open: ybComplaints.filter((c) => c.locality === locality && c.status !== 'Resolved').length,
   }))
   .sort((a, b) => b.open - a.open)
   .slice(0, 4)

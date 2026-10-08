@@ -78,7 +78,7 @@ export function YbComplaintsProvider({ children }) {
           for (const m of members) {
             touch(
               m.id,
-              {},
+              { status: "In Progress" },
               {
                 by: user.id,
                 at: today(),
@@ -110,6 +110,7 @@ export function YbComplaintsProvider({ children }) {
           {
             case_group_id: groupId,
             case_group_confirmed: true,
+            status: "In Progress",
           },
           {
             by: user.id,
@@ -156,7 +157,7 @@ export function YbComplaintsProvider({ children }) {
       if (mode === "end") {
         if (user.role !== "Representative")
           return { ok: false, message: "Only Representative can end the flow." };
-        if (!reason) return { ok: false, message: "Pick a decline reason." };
+        if (!reason) return { ok: false, message: "Pick a resolve reason." };
         if (!isOwner && !isRepresentative)
           return { ok: false, message: `Only ${ownerId ? "the owner" : "Representative"} can release.` };
 
@@ -165,15 +166,15 @@ export function YbComplaintsProvider({ children }) {
             (m) => m.case_group_id === targetGroup.id && isOpenComplaint(m)
           );
           if (openMembers.length === 0)
-            return { ok: false, message: "No open members to decline." };
+            return { ok: false, message: "No open members to resolve." };
           for (const m of openMembers) {
             touch(
               m.id,
-              { status: "Declined" },
-              { by: user.id, at: today(), action: "decline", detail: `Flow ended: ${reason}` }
+              { status: "Resolved" },
+              { by: user.id, at: today(), action: "resolve", detail: `Flow ended: ${reason}` }
             );
           }
-          // Every open member declined, so all members are ended now.
+          // Every open member resolved, so all members are ended now.
           setCaseGroups((prev) =>
             prev.map((g) => (g.id === targetGroup.id ? { ...g, status: "Closed" } : g))
           );
@@ -181,15 +182,15 @@ export function YbComplaintsProvider({ children }) {
             ok: true,
             count: openMembers.length,
             groupId: targetGroup.id,
-            message: `${targetGroup.title} closed · ${openMembers.length} open complaint${openMembers.length === 1 ? "" : "s"} declined.`,
+            message: `${targetGroup.title} closed · ${openMembers.length} open complaint${openMembers.length === 1 ? "" : "s"} resolved.`,
           };
         }
 
         // End single.
         touch(
           target.id,
-          { status: "Declined" },
-          { by: user.id, at: today(), action: "decline", detail: `Flow ended: ${reason}` }
+          { status: "Resolved" },
+          { by: user.id, at: today(), action: "resolve", detail: `Flow ended: ${reason}` }
         );
         if (targetGroup) {
           const remainingOpen = complaints.filter(
@@ -205,26 +206,13 @@ export function YbComplaintsProvider({ children }) {
           ok: true,
           count: 1,
           groupId: targetGroup?.id ?? null,
-          message: `Complaint ${target.ref_no ?? target.id} declined.`,
+          message: `Complaint ${target.ref_no ?? target.id} resolved.`,
         };
       }
 
       return { ok: false, message: "Invalid release mode." };
     },
     [caseGroups, complaints, touch]
-  );
-
-  const changeStatus = useCallback(
-    (id, next, user) => {
-      const c = complaints.find((x) => x.id === id);
-      if (!c) return;
-      touch(
-        id,
-        { status: next },
-        { by: user.id, at: today(), action: "status", detail: `${c.status} → ${next}` }
-      );
-    },
-    [complaints, touch]
   );
 
   const confirmMember = useCallback(
@@ -275,7 +263,7 @@ export function YbComplaintsProvider({ children }) {
       for (const m of members) {
         touch(
           m.id,
-          {},
+          { status: "In Progress" },
           { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed en-bloc via ${group.title}` }
         );
       }
@@ -319,6 +307,9 @@ export function YbComplaintsProvider({ children }) {
             ...c,
             case_group_id: groupId,
             case_group_confirmed: claims,
+            // Claiming moves the complaint straight to In Progress; groups
+            // opened unowned by the Representative stay Pending until claimed.
+            status: claims ? "In Progress" : c.status,
             history,
           };
         })
@@ -372,7 +363,6 @@ export function YbComplaintsProvider({ children }) {
       groupOwnerOf,
       touch,
       releaseComplaint,
-      changeStatus,
       confirmMember,
       confirmGroup,
       claimAll,
@@ -386,7 +376,6 @@ export function YbComplaintsProvider({ children }) {
       groupOwnerOf,
       touch,
       releaseComplaint,
-      changeStatus,
       confirmMember,
       confirmGroup,
       claimAll,

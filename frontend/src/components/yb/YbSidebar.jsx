@@ -18,7 +18,7 @@ const tones = ['brand', 'accent', 'mint']
 const watchedAreas = [...new Set(ybComplaints.map((c) => c.locality))]
   .map((name) => ({
     name,
-    open: ybComplaints.filter((c) => c.locality === name && c.status !== 'Resolved' && c.status !== 'Declined').length,
+    open: ybComplaints.filter((c) => c.locality === name && c.status !== 'Resolved').length,
   }))
   .sort((a, b) => b.open - a.open)
   .slice(0, 3)

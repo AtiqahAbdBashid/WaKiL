@@ -189,7 +189,7 @@ function RepresentativeDashboard() {
       ybStaff.map((s) => ({
         staff: s,
         total: ybComplaints.filter((c) => ownerOf(c) === s.id).length,
-        open: ybComplaints.filter((c) => ownerOf(c) === s.id && c.status !== "Resolved" && c.status !== "Declined").length,
+        open: ybComplaints.filter((c) => ownerOf(c) === s.id && c.status !== "Resolved").length,
       })),
     []
   );

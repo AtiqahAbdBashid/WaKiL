@@ -23,7 +23,7 @@ function bboxOf(fc) {
 }
 
 function counts(pins) {
-  const c = { Pending: 0, "In Progress": 0, Resolved: 0, Declined: 0, Outside: 0 };
+  const c = { Pending: 0, "In Progress": 0, Resolved: 0, Outside: 0 };
   for (const p of pins ?? []) {
     if (p.inside === false) c.Outside += 1;
     else if (c[p.status] !== undefined) c[p.status] += 1;

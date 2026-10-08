@@ -11,7 +11,6 @@ const STATUS_COLORS = {
   Pending: "#B45309",
   "In Progress": "#1D4ED8",
   Resolved: "#15803D",
-  Declined: "#7F1D1B",
 };
 const CATEGORY_COLORS = ["#1D4ED8", "#B45309", "#15803D", "#7F1D1B", "#6D28D9", "#0E7490", "#BE185D", "#4D7C0F", "#0F766E", "#C026D3", "#EA580C", "#475569", "#A16207"];
 

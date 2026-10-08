@@ -150,7 +150,7 @@ export default function ClaimCaseGroupDialog({
                         <span className="block font-bold text-ink">{c.title}</span>
                         <span className="block text-xs text-ink-soft">
                           <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
-                          {" · "}{c.category} · {c.locality} · {c.status}
+                          {" · "}{c.category} · {c.locality}
                         </span>
                       </span>
                     </label>

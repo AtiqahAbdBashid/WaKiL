@@ -18,7 +18,6 @@ function rowStats(items) {
   return {
     total: items.length,
     resolved: items.filter((c) => c.status === "Resolved").length,
-    declined: items.filter((c) => c.status === "Declined").length,
     progress: items.filter((c) => c.status === "In Progress").length,
     pending: items.filter((c) => c.status === "Pending").length,
     s30: items.filter((c) => inRange(c, 30, 60)).length,
@@ -31,7 +30,6 @@ function rowStats(items) {
 const COLS = [
   { id: "total", label: "Total" },
   { id: "resolved", label: "Resolved" },
-  { id: "declined", label: "Declined" },
   { id: "progress", label: "In progress" },
   { id: "pending", label: "Pending" },
   { id: "s30", label: "No update 30–60d" },

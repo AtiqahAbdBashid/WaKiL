@@ -15,7 +15,6 @@ const statusTone = {
   'In Review': 'neutral',
   'In Action': 'mint',
   Resolved: 'mint',
-  Declined: 'neutral',
 }
 
 export default function Badge({ tone, caps = false, className = '', children }) {

@@ -24,14 +24,12 @@ export default function ComplaintDetailDialog({
   user,
   canClaim,
   canReassign,
-  statusOptions,
   poolMode = false,
   caseGroup = null,
   releaseCandidates = [],
   canMarkResolved = false,
   onClose,
   onClaim,
-  onStatusChange,
   onAddUpdate,
   onReleaseComplaint,
   onConfirmMember,
@@ -135,7 +133,7 @@ export default function ComplaintDetailDialog({
         return;
       }
       if (!releaseReason) {
-        setReleaseError("Pick a decline reason.");
+        setReleaseError("Pick a resolve reason.");
         return;
       }
     }
@@ -250,21 +248,16 @@ export default function ComplaintDetailDialog({
 
           {poolMode ? (
             <div className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft">
-              Status is {c.status}. Triage happens after claiming, under Assigned Complaints.
+              Pending in the pool. Triage happens after claiming, under Assigned Complaints.
             </div>
           ) : (
             <div>
-              <label htmlFor="dlg-status" className={labelClass}>Status</label>
-              <select
-                id="dlg-status"
-                value={c.status}
-                onChange={(e) => onStatusChange(c.id, e.target.value)}
-                className={`${inputClass} text-sm`}
-              >
-                {statusOptions(c).map((s) => <option key={s}>{s}</option>)}
-              </select>
+              <p className={labelClass}>Status</p>
+              <div className="mt-1">
+                <Badge>{c.status}</Badge>
+              </div>
               <p className="mt-1 text-xs text-ink-soft">
-                Assignment starts at the case group level. Release a single complaint below.
+                Claiming moves a complaint to In Progress. Ending resolves it. Release a single complaint below.
               </p>
             </div>
           )}
@@ -398,9 +391,9 @@ export default function ComplaintDetailDialog({
                         className="mt-1 h-4 w-4 accent-brand"
                       />
                       <span className="text-sm">
-                        <span className="block font-bold text-ink">End with a reason</span>
+                        <span className="block font-bold text-ink">End and resolve</span>
                         <span className="block text-xs text-ink-soft">
-                          {canMarkResolved ? "Declines this complaint under a fixed reason." : "Representative only."}
+                          {canMarkResolved ? "Resolves this complaint under a fixed reason." : "Representative only."}
                         </span>
                       </span>
                     </label>
@@ -429,7 +422,7 @@ export default function ComplaintDetailDialog({
                     </div>
                   ) : (
                     <fieldset>
-                      <legend className={labelClass}>Decline reason</legend>
+                      <legend className={labelClass}>Resolve reason</legend>
                       <ul className="max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-line p-2">
                         {END_FLOW_REASONS.map((r) => {
                           const { label, detail } = splitReason(r);
@@ -475,7 +468,7 @@ export default function ComplaintDetailDialog({
                   {releaseError && <p role="alert" className="text-sm font-medium text-red-700">{releaseError}</p>}
                   <div className="flex flex-wrap items-center gap-2">
                     <button type="submit" className={secondaryButton}>
-                      {releaseMode === "transfer" ? "Transfer complaint" : "End complaint"}
+                      {releaseMode === "transfer" ? "Transfer complaint" : "End and resolve"}
                     </button>
                     <button type="button" onClick={resetRelease} className={textLink}>Cancel</button>
                   </div>

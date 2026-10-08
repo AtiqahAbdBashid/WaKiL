@@ -23,7 +23,6 @@ export default function AssignedComplaintsPage() {
     caseGroups,
     groupMembers,
     releaseComplaint,
-    changeStatus,
     confirmMember,
     addUpdate,
   } = useYbComplaints();
@@ -59,15 +58,6 @@ export default function AssignedComplaintsPage() {
     return result;
   };
 
-  const onStatusChange = (id, next) => {
-    if (next === "Resolved" && !canMarkResolved) {
-      setAnnouncement("Only Representative can mark Resolved in this mock.");
-      return;
-    }
-    changeStatus(id, next, user);
-    setAnnouncement(`Complaint ${formatDisplayRef(id)} marked ${next}.`);
-  };
-
   const onConfirmMember = (id) => {
     if (!confirmMember(id, user)) {
       setAnnouncement(`Complaint ${formatDisplayRef(id)} is closed and cannot be confirmed.`);
@@ -91,9 +81,6 @@ export default function AssignedComplaintsPage() {
     setCategory("All");
     setQuery("");
   };
-
-  const statusOptions = (c) =>
-    c.status === "Resolved" || canMarkResolved ? ybStatuses : ybStatuses.filter((s) => s !== "Resolved");
 
   const selected = complaints.find((x) => x.id === selectedId) ?? null;
   const selectedGroup = selected?.case_group_id
@@ -245,11 +232,9 @@ export default function AssignedComplaintsPage() {
         user={user}
         canClaim={canClaim}
         canReassign={canReassign}
-        statusOptions={statusOptions}
         caseGroup={selectedCaseGroup}
         onClose={() => setSelectedId(null)}
         onClaim={() => {}}
-        onStatusChange={onStatusChange}
         onAddUpdate={onAddUpdate}
         onReleaseComplaint={onReleaseComplaint}
         releaseCandidates={releaseCandidates}

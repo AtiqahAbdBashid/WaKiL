@@ -5,14 +5,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search } from "lucide-react";
 
-import Badge from "../../components/ui/Badge";
 import PageTitle from "../../components/ui/PageTitle";
 import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import ClaimCaseGroupDialog from "../../components/yb/ClaimCaseGroupDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
-import { formatDate, formatDisplayRef, ybCategories, ybStatuses } from "../../data/ybSample";
+import { formatDate, formatDisplayRef, ybCategories } from "../../data/ybSample";
 import { staffName } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
@@ -20,7 +19,6 @@ import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsCont
 export default function ComplaintPoolPage() {
   const { user, canClaim } = useYbAuth();
   const { complaints, createGroupWithSelection } = useYbComplaints();
-  const [status, setStatus] = useState("All");
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [announcement, setAnnouncement] = useState("");
@@ -28,8 +26,9 @@ export default function ComplaintPoolPage() {
   const [claimSeedId, setClaimSeedId] = useState(null);
 
   const q = query.trim().toLowerCase();
+  // Every ungrouped complaint is Pending by invariant, so there is no status
+  // filter here — only category and free-text search.
   const matches = (c) =>
-    (status === "All" || c.status === status) &&
     (category === "All" || c.category === category) &&
     (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
@@ -57,7 +56,6 @@ export default function ComplaintPoolPage() {
   };
 
   const clear = () => {
-    setStatus("All");
     setCategory("All");
     setQuery("");
   };
@@ -70,14 +68,7 @@ export default function ComplaintPoolPage() {
       />
       <SampleNote label="Note:">Mock multi-staff triage. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative opens groups unowned.</SampleNote>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
-        <div>
-          <label htmlFor="pool-status" className={labelClass}>Status</label>
-          <select id="pool-status" value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
-            <option>All</option>
-            {ybStatuses.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </div>
+      <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
         <div>
           <label htmlFor="pool-category" className={labelClass}>Category</label>
           <select id="pool-category" value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
@@ -117,7 +108,6 @@ export default function ComplaintPoolPage() {
                 <tr className="border-b border-line text-ink-soft">
                   <th scope="col" className="px-4 py-3 font-bold md:px-5">Ref.</th>
                   <th scope="col" className="px-4 py-3 font-bold">Complaint</th>
-                  <th scope="col" className="px-4 py-3 font-bold md:px-5">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,7 +129,6 @@ export default function ComplaintPoolPage() {
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 md:px-5"><Badge>{c.status}</Badge></td>
                   </tr>
                 ))}
               </tbody>
@@ -158,11 +147,9 @@ export default function ComplaintPoolPage() {
         user={user}
         canClaim={canClaim}
         canReassign={false}
-        statusOptions={() => []}
         poolMode
         onClose={() => setSelectedId(null)}
         onClaim={onClaimRequest}
-        onStatusChange={() => {}}
         onAddUpdate={() => {}}
       />
 
