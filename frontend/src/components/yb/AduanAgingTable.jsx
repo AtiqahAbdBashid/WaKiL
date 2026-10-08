@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
 import { ybCategories, ybComplaints } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
+import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 
 const TODAY = Date.parse("2026-10-03T00:00:00Z");
 const DAY = 86400000;
@@ -44,12 +44,17 @@ export default function AduanAgingTable() {
   const [mode, setMode] = useState("category");
 
   const rows = useMemo(() => {
+    // Owner equals worker: staff rows count members of groups they own.
+    const ownerOf = (c) =>
+      c.case_group_id
+        ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
+        : null;
     const groups =
       mode === "category"
         ? ybCategories.map((cat) => ({ key: cat, label: cat, sub: null, items: ybComplaints.filter((c) => c.category === cat) }))
         : [
-            ...ybStaff.map((s) => ({ key: s.id, label: staffName(s.id), sub: s.role, items: ybComplaints.filter((c) => c.assigneeId === s.id) })),
-            { key: "unassigned", label: "Unassigned", sub: "pool", items: ybComplaints.filter((c) => !c.assigneeId) },
+            ...ybStaff.map((s) => ({ key: s.id, label: staffName(s.id), sub: s.role, items: ybComplaints.filter((c) => ownerOf(c) === s.id) })),
+            { key: "unassigned", label: "Unassigned", sub: "pool", items: ybComplaints.filter((c) => !ownerOf(c)) },
           ];
     return groups.map((g) => ({ ...g, stats: rowStats(g.items) })).sort((a, b) => b.stats.total - a.stats.total);
   }, [mode]);

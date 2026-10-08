@@ -1,4 +1,4 @@
-// Attention order: flagged first, then oldest unassigned Pending, then stalest In Progress (60d+ untouched).
+// Attention order: flagged first, then oldest ungrouped Pending, then stalest In Progress (60d+ untouched).
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -13,16 +13,16 @@ const isStale = (c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= 
 
 function reason(c) {
   if (c.needsRepresentativeAttention) return "Flagged for Representative";
-  if (c.status === "Pending" && !c.assigneeId) return `Unassigned since ${formatDate(c.date)}`;
+  if (c.status === "Pending" && !c.case_group_id) return `Ungrouped since ${formatDate(c.date)}`;
   return `Stale since ${formatDate(c.updatedAt)}`;
 }
 
 const rank = (c) =>
-  c.needsRepresentativeAttention ? 0 : c.status === "Pending" && !c.assigneeId ? 1 : 2;
+  c.needsRepresentativeAttention ? 0 : c.status === "Pending" && !c.case_group_id ? 1 : 2;
 
 function getAttentionList() {
   return ybComplaints
-    .filter((c) => c.needsRepresentativeAttention || (c.status === "Pending" && !c.assigneeId) || isStale(c))
+    .filter((c) => c.needsRepresentativeAttention || (c.status === "Pending" && !c.case_group_id) || isStale(c))
     .sort((a, b) => rank(a) - rank(b) || a.date.localeCompare(b.date));
 }
 

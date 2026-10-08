@@ -56,32 +56,99 @@ test("only Representative closes: Intern cannot Resolved, Representative can", a
   }
 });
 
-test("Intern self-claim/release allowed, reassign of others denied", async () => {
+test("per-complaint assignment rejected: pool complaint claims via group only", async () => {
   const { srv, base } = await start();
   try {
     const intern = (await (await login(base, "danish@parlimen.gov.my")).json()).token;
     const h = { "content-type": "application/json", ...authH(intern) };
-    const claimed = await fetch(`${base}/api/aduan/6`, { method: "PATCH", headers: h, body: JSON.stringify({ assigneeId: "u-intern" }) });
-    assert.equal(claimed.status, 200);
-    // Intern tries to hand pool aduan to someone else
-    const denied = await fetch(`${base}/api/aduan/8`, { method: "PATCH", headers: h, body: JSON.stringify({ assigneeId: "u-aide" }) });
-    assert.equal(denied.status, 403);
+    // Direct per-complaint claim is gone.
+    const rejected = await fetch(`${base}/api/aduan/6`, { method: "PATCH", headers: h, body: JSON.stringify({ assigneeId: "u-intern" }) });
+    assert.equal(rejected.status, 400);
+    assert.match((await rejected.json()).error, /case group only/);
+    // Ungrouped pool complaint carries no per-complaint owner field.
+    const item = await (await fetch(`${base}/api/aduan/6`, { headers: authH(intern) })).json();
+    assert.equal(item.aduan.case_group_id, null);
+    assert.ok(!("assigneeId" in item.aduan));
   } finally {
     srv.close();
   }
 });
 
-test("Aide reassigns, Representative manages staff; Intern manages nothing", async () => {
+test("en-bloc claim: Representative opens unowned, Aide claims, Representative cannot", async () => {
+  const { srv, base } = await start();
+  try {
+    const rep = (await (await login(base, "yb.khairul@parlimen.gov.my")).json()).token;
+    const aide = (await (await login(base, "aina@parlimen.gov.my")).json()).token;
+    const j = (t) => ({ "content-type": "application/json", ...authH(t) });
+    // Representative opens a group unowned (never holds work).
+    const created = await fetch(`${base}/api/case-groups`, {
+      method: "POST",
+      headers: j(rep),
+      body: JSON.stringify({ title: "Pool round" }),
+    });
+    assert.equal(created.status, 201);
+    const group = (await created.json()).case_group;
+    assert.equal(group.owner_staff_id, null);
+    // Group pool complaint 6 first.
+    const grouped = await fetch(`${base}/api/aduan/6`, {
+      method: "PATCH",
+      headers: j(rep),
+      body: JSON.stringify({ case_group_id: group.id }),
+    });
+    assert.equal(grouped.status, 200);
+    assert.equal((await grouped.json()).aduan.case_group_id, group.id);
+    // Aide claims the whole group en-bloc.
+    const claim = await fetch(`${base}/api/case-groups/${group.id}/claim-all`, { method: "POST", headers: j(aide) });
+    assert.equal(claim.status, 200);
+    const { case_group, claimed } = await claim.json();
+    assert.equal(case_group.owner_staff_id, "u-aide");
+    assert.deepEqual(claimed, [6]);
+    // Representative never claims.
+    const repClaim = await fetch(`${base}/api/case-groups/${group.id}/claim-all`, { method: "POST", headers: j(rep) });
+    assert.equal(repClaim.status, 403);
+  } finally {
+    srv.close();
+  }
+});
+
+test("whole-group transfer: owner moves group, Intern non-owner denied, Representative target rejected", async () => {
   const { srv, base } = await start();
   try {
     const aide = (await (await login(base, "aina@parlimen.gov.my")).json()).token;
-    const re = await fetch(`${base}/api/aduan/8`, {
+    const intern2 = (await (await login(base, "sara@parlimen.gov.my")).json()).token;
+    const j = (t) => ({ "content-type": "application/json", ...authH(t) });
+    // cg-lights seeded owned by u-aide; owner transfers en-bloc to an Intern.
+    const moved = await fetch(`${base}/api/case-groups/cg-lights`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", ...authH(aide) },
-      body: JSON.stringify({ assigneeId: "u-intern" }),
+      headers: j(aide),
+      body: JSON.stringify({ owner_staff_id: "u-intern" }),
     });
-    assert.equal(re.status, 200);
+    assert.equal(moved.status, 200);
+    assert.equal((await moved.json()).case_group.owner_staff_id, "u-intern");
+    const member = await (await fetch(`${base}/api/aduan/5`, { headers: authH(aide) })).json();
+    assert.equal(member.aduan.history.at(-1).action, "reassign");
+    // Intern holding nothing cannot move someone else's group.
+    const denied = await fetch(`${base}/api/case-groups/cg-drainage`, {
+      method: "PATCH",
+      headers: j(intern2),
+      body: JSON.stringify({ owner_staff_id: "u-intern2" }),
+    });
+    assert.equal(denied.status, 403);
+    // Representative never holds groups.
+    const repTarget = await fetch(`${base}/api/case-groups/cg-lights`, {
+      method: "PATCH",
+      headers: j(aide),
+      body: JSON.stringify({ owner_staff_id: "u-representative" }),
+    });
+    assert.equal(repTarget.status, 400);
+  } finally {
+    srv.close();
+  }
+});
 
+test("Representative manages staff; Intern manages nothing", async () => {
+  const { srv, base } = await start();
+  try {
     const intern = (await (await login(base, "danish@parlimen.gov.my")).json()).token;
     const forbidden = await fetch(`${base}/api/staff`, {
       method: "POST",
@@ -102,19 +169,23 @@ test("Aide reassigns, Representative manages staff; Intern manages nothing", asy
   }
 });
 
-test("expiry/deactivation releases claimed aduan to pool + blocks session", async () => {
+test("expiry/deactivation returns owned groups to pool + blocks session", async () => {
   const { srv, base } = await start();
   try {
     const representative = (await (await login(base, "yb.khairul@parlimen.gov.my")).json()).token;
     const h = { "content-type": "application/json", ...authH(representative) };
-    // Intern holds aduan 4; deactivate intern
-    const off = await fetch(`${base}/api/staff/u-intern`, { method: "PATCH", headers: h, body: JSON.stringify({ active: false }) });
+    // u-aide owns cg-lights (members 5, 8, 15, 28, 30); deactivate owner.
+    const off = await fetch(`${base}/api/staff/u-aide`, { method: "PATCH", headers: h, body: JSON.stringify({ active: false }) });
     assert.equal(off.status, 200);
-    const item = await (await fetch(`${base}/api/aduan/4`, { headers: authH(representative) })).json();
-    assert.equal(item.aduan.assigneeId, null);
+    const item = await (await fetch(`${base}/api/aduan/5`, { headers: authH(representative) })).json();
+    assert.equal(item.aduan.case_group_id, null);
+    assert.ok(!("assigneeId" in item.aduan));
+    assert.equal(item.aduan.history.at(-1).action, "release");
     assert.match(item.aduan.history.at(-1).detail, /released to pool/);
-    // Deactivated intern cannot log in
-    assert.equal((await login(base, "danish@parlimen.gov.my")).status, 401);
+    const groups = (await (await fetch(`${base}/api/case-groups`, { headers: authH(representative) })).json()).case_groups;
+    assert.equal(groups.find((g) => g.id === "cg-lights").owner_staff_id, null);
+    // Deactivated aide cannot log in
+    assert.equal((await login(base, "aina@parlimen.gov.my")).status, 401);
   } finally {
     srv.close();
   }

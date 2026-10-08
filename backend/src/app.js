@@ -4,7 +4,7 @@
 // (base64 staff id). Frontend sends it as `Authorization: Bearer <token>`.
 import express from "express";
 import cors from "cors";
-import { canManageStaff, canReassign, canSetStatus, canViewStaff, hasAccess, isValidStatus, ROLES, STATUSES } from "./domain.js";
+import { canClaimGroup, canManageStaff, canReassign, canSetStatus, canViewStaff, hasAccess, isValidStatus, ROLES, STATUSES } from "./domain.js";
 import { createStore } from "./store.js";
 import { featureContains, kodFeature, negeriView } from "./kawasan.js";
 
@@ -76,22 +76,17 @@ export function createApp(store = createStore()) {
     res.json({ aduan: item });
   });
 
-  // Triage: claim/release (self), reassign (Representative/Aide), status (Representative-only close).
+  // Triage: per-complaint assignment is gone (owner equals worker via
+  // Case_Group.owner_staff_id). PATCH handles status + group membership only;
+  // claiming/transfer happens en-bloc at the case-group endpoints below.
   app.patch("/api/aduan/:id", auth, (req, res) => {
     const item = store.getAduan(req.params.id);
     if (!item) return res.status(404).json({ error: "not found" });
     const { assigneeId, status, case_group_id } = req.body ?? {};
     const me = req.user;
 
-    if (assigneeId !== undefined) {
-      const next = assigneeId || null;
-      const selfOnly = next === me.id || next === null;
-      const reassigningOther = !selfOnly && assigneeId !== item.assigneeId;
-      if ((reassigningOther || (item.assigneeId && item.assigneeId !== me.id && next !== item.assigneeId)) && !canReassign(me.role))
-        return res.status(403).json({ error: "Representative/Aide only" });
-      if (next && !hasAccess(store.getStaff(next)))
-        return res.status(400).json({ error: "assignee has no access" });
-    }
+    if (assigneeId !== undefined)
+      return res.status(400).json({ error: "assignment via case group only" });
     if (status !== undefined) {
       if (!isValidStatus(status)) return res.status(400).json({ error: `status in ${STATUSES}` });
       if (!canSetStatus(me.role, status)) return res.status(403).json({ error: "only Representative closes" });
@@ -100,12 +95,6 @@ export function createApp(store = createStore()) {
       return res.status(400).json({ error: "case group not found" });
 
     const updated = store.mutateAduan(req.params.id, (a, { audit }) => {
-      if (assigneeId !== undefined) {
-        const next = assigneeId || null;
-        const action = next === null ? "release" : item.assigneeId === null ? "claim" : "reassign";
-        a.assigneeId = next;
-        audit(a, me.id, action, `${me.name} ${action} → ${next ?? "pool"}`);
-      }
       if (status !== undefined && status !== item.status) {
         const from = a.status;
         a.status = status;
@@ -115,6 +104,7 @@ export function createApp(store = createStore()) {
         a.case_group_id = case_group_id || null;
         a.case_group_confirmed = false;
         if (case_group_id) audit(a, me.id, "group-assign", `${me.name} tentatively added to ${case_group_id}`);
+        else audit(a, me.id, "group-remove", `${me.name} returned to pool`);
       }
     });
     res.json({ aduan: updated });
@@ -122,14 +112,16 @@ export function createApp(store = createStore()) {
 
   app.get("/api/service-centers", auth, (_req, res) => res.json({ service_centers: store.listServiceCenters() }));
 
-  // Case groups: Representative/Aide create + confirm; Intern denied.
-  // Confirm validates members are still open and audits group-confirm.
+  // Case groups own assignment: Representative opens groups unowned (never
+  // holds work); Aide/Intern create-and-claim en-bloc in one step.
   app.get("/api/case-groups", auth, (_req, res) => res.json({ case_groups: store.listCaseGroups() }));
   app.post("/api/case-groups", auth, (req, res) => {
-    if (!canReassign(req.user.role)) return res.status(403).json({ error: "Representative/Aide only" });
+    if (!canReassign(req.user.role) && !canClaimGroup(req.user.role))
+      return res.status(403).json({ error: "forbidden" });
     const { title, category } = req.body ?? {};
     if (!title) return res.status(400).json({ error: "title required" });
-    res.status(201).json({ case_group: store.createCaseGroup({ title, category, owner_staff_id: req.user.id }) });
+    const owner_staff_id = req.user.role === "Representative" ? null : req.user.id;
+    res.status(201).json({ case_group: store.createCaseGroup({ title, category, owner_staff_id }) });
   });
   app.post("/api/case-groups/:id/confirm", auth, (req, res) => {
     if (!canReassign(req.user.role)) return res.status(403).json({ error: "Representative/Aide only" });
@@ -150,20 +142,53 @@ export function createApp(store = createStore()) {
     }
     res.json({ case_group: store.getCaseGroup(group.id), confirmed });
   });
+  // En-bloc claim: claimant becomes group owner; every open member shares
+  // that owner as single assignee. Ungrouped pool complaints are never
+  // claimed directly — group first, then claim the group.
   app.post("/api/case-groups/:id/claim-all", auth, (req, res) => {
+    if (!canClaimGroup(req.user.role)) return res.status(403).json({ error: "Aide/Intern only" });
     const group = store.getCaseGroup(req.params.id);
     if (!group) return res.status(404).json({ error: "not found" });
+    if (group.owner_staff_id && group.owner_staff_id !== req.user.id && !canReassign(req.user.role))
+      return res.status(403).json({ error: "Representative/Aide only" });
+    store.setCaseGroupOwner(group.id, req.user.id);
     const claimed = [];
     for (const id of group.memberIds) {
       const item = store.getAduan(id);
-      if (!item || item.assigneeId || item.status === "Resolved" || item.status === "Declined") continue;
+      if (!item || item.status === "Resolved" || item.status === "Declined") continue;
       store.mutateAduan(id, (a, { audit }) => {
-        a.assigneeId = req.user.id;
-        audit(a, req.user.id, "claim", `${req.user.name} claimed from pool via ${group.title}`);
+        audit(a, req.user.id, "claim", `${req.user.name} claimed en-bloc via ${group.title}`);
       });
       claimed.push(id);
     }
     res.json({ case_group: store.getCaseGroup(group.id), claimed });
+  });
+
+  // Whole-group transfer (release semantics): owner or Representative/Aide
+  // moves the entire group to another Aide/Intern. No per-complaint move.
+  app.patch("/api/case-groups/:id", auth, (req, res) => {
+    const group = store.getCaseGroup(req.params.id);
+    if (!group) return res.status(404).json({ error: "not found" });
+    const next = req.body?.owner_staff_id;
+    if (!next) return res.status(400).json({ error: "owner_staff_id required" });
+    const target = store.getStaff(next);
+    if (!hasAccess(target)) return res.status(400).json({ error: "assignee has no access" });
+    if (target.role === "Representative")
+      return res.status(400).json({ error: "Representative does not hold groups" });
+    const isOwner = group.owner_staff_id === req.user.id;
+    if (!isOwner && !canReassign(req.user.role))
+      return res.status(403).json({ error: "Representative/Aide only" });
+    if (group.owner_staff_id === next)
+      return res.json({ case_group: store.getCaseGroup(group.id) });
+    store.setCaseGroupOwner(group.id, next);
+    for (const id of group.memberIds) {
+      const item = store.getAduan(id);
+      if (!item || item.status === "Resolved" || item.status === "Declined") continue;
+      store.mutateAduan(id, (a, { audit }) => {
+        audit(a, req.user.id, "reassign", `${req.user.name} transferred ${group.title} to ${target.name}`);
+      });
+    }
+    res.json({ case_group: store.getCaseGroup(group.id) });
   });
 
   app.get("/api/kawasan", auth, (_req, res) => res.json({ kawasan: store.getKawasan() }));

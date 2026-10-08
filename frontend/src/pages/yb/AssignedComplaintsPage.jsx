@@ -96,6 +96,10 @@ export default function AssignedComplaintsPage() {
     c.status === "Resolved" || canMarkResolved ? ybStatuses : ybStatuses.filter((s) => s !== "Resolved");
 
   const selected = complaints.find((x) => x.id === selectedId) ?? null;
+  const selectedGroup = selected?.case_group_id
+    ? caseGroups.find((g) => g.id === selected.case_group_id) ?? null
+    : null;
+  const selectedOwnerId = selectedGroup?.owner_staff_id ?? null;
   const selectedCaseGroup = (() => {
     if (!selected?.case_group_id) return null;
     const members = groupMembers(selected.case_group_id);
@@ -109,7 +113,7 @@ export default function AssignedComplaintsPage() {
     (s) =>
       s.active &&
       (s.role === "Aide" || s.role === "Intern") &&
-      s.id !== selected?.assigneeId
+      s.id !== selectedOwnerId
   );
 
   return (
@@ -214,7 +218,7 @@ export default function AssignedComplaintsPage() {
                                   </button>
                                   <p className="text-xs text-ink-soft">
                                     <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
-                                    {" · "}{c.category} · {c.locality} · {c.assigneeId ? staffName(c.assigneeId) : "Pool"}
+                                    {" · "}{c.category} · {c.locality} · {staffName(g.owner_staff_id)}
                                     {c.case_group_confirmed ? " · confirmed" : " · tentative"}
                                   </p>
                                 </div>

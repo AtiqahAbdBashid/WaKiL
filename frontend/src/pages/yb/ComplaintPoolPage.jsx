@@ -1,6 +1,6 @@
-// Complaint Pool: unassigned complaints outside case groups
-// (!assigneeId && !case_group_id). Read-only list; staff open a complaint
-// to claim it, which opens a Case Group popup.
+// Complaint Pool: ungrouped complaints (no case_group_id). Read-only list;
+// staff open a complaint to group 1..N pool complaints, then claim en-bloc
+// via the new Case Group. Ungrouped complaints are never claimed directly.
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search } from "lucide-react";
@@ -34,7 +34,7 @@ export default function ComplaintPoolPage() {
     (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
   const pool = complaints
-    .filter((c) => !c.assigneeId && !c.case_group_id && matches(c))
+    .filter((c) => !c.case_group_id && matches(c))
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const seedComplaint = complaints.find((x) => x.id === claimSeedId) ?? null;
@@ -66,9 +66,9 @@ export default function ComplaintPoolPage() {
     <div className="w-full space-y-8">
       <PageTitle
         title="Complaint Pool"
-        subtitle="Unassigned complaints outside case groups. Open a complaint to claim it via a Case Group."
+        subtitle="Ungrouped complaints. Open a complaint to group it and claim en-bloc via a Case Group."
       />
-      <SampleNote label="Note:">Mock multi-staff triage. Open a complaint to claim it. Aide and Intern claim by opening a case group; Representative opens groups unassigned.</SampleNote>
+      <SampleNote label="Note:">Mock multi-staff triage. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative opens groups unowned.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
         <div>
@@ -107,7 +107,7 @@ export default function ComplaintPoolPage() {
       <Sheet title={`Complaint pool · ${pool.length} complaints`}>
         {pool.length === 0 ? (
           <div className="space-y-3 px-4 py-10 text-center md:px-5">
-            <p className="text-base text-ink-soft">No unassigned complaints match these filters.</p>
+            <p className="text-base text-ink-soft">No ungrouped complaints match these filters.</p>
             <button onClick={clear} className={textLink}>Clear filters</button>
           </div>
         ) : (

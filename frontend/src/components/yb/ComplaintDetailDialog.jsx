@@ -8,7 +8,7 @@ import { inputClass, labelClass, secondaryButton, textLink } from "../ui/styles"
 import { END_FLOW_REASONS, formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
 import { citizenName } from "../../data/ybCitizens";
 import { staffName } from "../../data/ybStaff";
-import { isOpenComplaint } from "../../context/YbComplaintsContext";
+import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 import useDialogFocus from "./useDialogFocus";
 
 // "Label: explanation", split for display; the stored string stays verbatim.
@@ -51,6 +51,8 @@ export default function ComplaintDetailDialog({
   const [releaseError, setReleaseError] = useState("");
   const fileInputRef = useRef(null);
 
+  const { groupOwnerOf } = useYbComplaints();
+
   useEffect(() => {
     if (!c) return;
     const onKey = (e) => {
@@ -62,14 +64,16 @@ export default function ComplaintDetailDialog({
 
   if (!c) return null;
 
-  const isOwner = !!c.assigneeId && c.assigneeId === user?.id;
-  const ownerName = c.assigneeId ? staffName(c.assigneeId) : "Pool";
+  // Owner equals worker: the complaint's group owner is its single assignee.
+  const ownerId = groupOwnerOf(c);
+  const isOwner = !!ownerId && ownerId === user?.id;
+  const ownerName = ownerId ? staffName(ownerId) : "Pool";
 
   const submitUpdate = (e) => {
     e.preventDefault();
     const text = body.trim();
-    if (!c.assigneeId) {
-      setFormError("Unassigned aduan cannot be updated. Claim it first.");
+    if (!ownerId) {
+      setFormError("Ungrouped complaints cannot be updated. Group and claim it first.");
       return;
     }
     if (!isOwner) {
@@ -113,8 +117,8 @@ export default function ComplaintDetailDialog({
   const submitRelease = (e) => {
     e.preventDefault();
     setReleaseError("");
-    if (!c.assigneeId) {
-      setReleaseError("Unassigned aduan cannot be released. Claim it first.");
+    if (!ownerId) {
+      setReleaseError("Ungrouped complaints have nothing to release. Group it first.");
       return;
     }
     if (!canRelease) {
@@ -226,15 +230,15 @@ export default function ComplaintDetailDialog({
             <dd className="text-ink">
               {ownerName}
               <span className="ml-3 inline-flex flex-wrap gap-2">
-                {!c.assigneeId && (canClaim || poolMode) && (
+                {!ownerId && poolMode && (
                   <button onClick={() => onClaim(c.id)} className={textLink}>
                     {canClaim ? "Claim" : "Open group"}
                   </button>
                 )}
               </span>
-              {poolMode && !c.assigneeId && (
+              {poolMode && !ownerId && (
                 <span className="mt-1 block text-xs text-ink-soft">
-                  Claiming opens a Case Group. You can add other pool complaints there.
+                  Grouping opens a Case Group. You can add other pool complaints there.
                 </span>
               )}
             </dd>
@@ -288,8 +292,8 @@ export default function ComplaintDetailDialog({
 
           <div key={c.id} className="space-y-3 border-t border-line pt-4">
             <h3 className="text-sm font-bold text-ink">Add update</h3>
-            {!c.assigneeId ? (
-              <p className="text-sm text-ink-soft">Unassigned aduan cannot be updated. Claim it first.</p>
+            {!ownerId ? (
+              <p className="text-sm text-ink-soft">Ungrouped complaints cannot be updated. Group and claim it first.</p>
             ) : !isOwner ? (
               <p className="text-sm text-ink-soft">Only {ownerName} can add updates.</p>
             ) : !showComposer ? (
@@ -354,8 +358,8 @@ export default function ComplaintDetailDialog({
           {!poolMode && onReleaseComplaint && (
             <div className="space-y-3 border-t border-line pt-4">
               <h3 className="text-sm font-bold text-ink">Release</h3>
-              {!c.assigneeId ? (
-                <p className="text-sm text-ink-soft">Unassigned aduan has nothing to release. Claim it first.</p>
+              {!ownerId ? (
+                <p className="text-sm text-ink-soft">Ungrouped complaint has nothing to release. Group it first.</p>
               ) : !canRelease ? (
                 <p className="text-sm text-ink-soft">Only {ownerName} can release.</p>
               ) : !isOpenComplaint(c) ? (

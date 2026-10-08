@@ -1,6 +1,7 @@
 // Shared mock triage state so Assigned Complaints and Complaint Pool see the same data.
-// Claim path: staff open a case group with >=1 pool complaint; Aide/Intern claim
-// via the group. Representative never becomes an assignee.
+// En-bloc only: assignment lives solely on Case_Group.owner_staff_id (owner
+// equals worker). Pool means no case_group_id; claiming/transfer moves whole
+// groups, never single complaints.
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { ybComplaints } from "../data/ybSample";
@@ -30,8 +31,18 @@ export function YbComplaintsProvider({ children }) {
     [complaints]
   );
 
-  // Per-complaint release with optional propagation. Single transfer detaches
-  // to a new case group owned by the transferee.
+  // Single assignee derivation: the group's owner. Null means pool/unowned.
+  const groupOwnerOf = useCallback(
+    (complaint) => {
+      if (!complaint?.case_group_id) return null;
+      return caseGroups.find((g) => g.id === complaint.case_group_id)?.owner_staff_id ?? null;
+    },
+    [caseGroups]
+  );
+
+  // Whole-group release/transfer. Single transfer detaches the complaint
+  // into a new case group owned by the transferee; repeatInGroup transfers
+  // the entire group (owner equals worker for all members).
   const releaseComplaint = useCallback(
     (id, { mode, nextId, reason, repeatInGroup }, user) => {
       const target = complaints.find((x) => x.id === id);
@@ -42,16 +53,17 @@ export function YbComplaintsProvider({ children }) {
       const targetGroup = target.case_group_id
         ? caseGroups.find((g) => g.id === target.case_group_id) || null
         : null;
+      const ownerId = targetGroup?.owner_staff_id ?? null;
 
       const isRepresentative = user.role === "Representative";
-      const isOwner = !!target.assigneeId && target.assigneeId === user.id;
+      const isOwner = !!ownerId && ownerId === user.id;
 
       if (mode === "transfer") {
         const next = ybStaff.find((s) => s.id === nextId && s.active);
         if (!next || next.role === "Representative")
           return { ok: false, message: "Pick an active Aide or Intern." };
         if (!isOwner && !isRepresentative)
-          return { ok: false, message: `Only ${target.assigneeId ? "the owner" : "Representative"} can release.` };
+          return { ok: false, message: `Only ${ownerId ? "the owner" : "Representative"} can release.` };
 
         if (repeatInGroup && targetGroup) {
           // Move all open members together; stay in group, move owner.
@@ -66,7 +78,7 @@ export function YbComplaintsProvider({ children }) {
           for (const m of members) {
             touch(
               m.id,
-              { assigneeId: next.id },
+              {},
               {
                 by: user.id,
                 at: today(),
@@ -96,7 +108,6 @@ export function YbComplaintsProvider({ children }) {
         touch(
           target.id,
           {
-            assigneeId: next.id,
             case_group_id: groupId,
             case_group_confirmed: true,
           },
@@ -109,7 +120,7 @@ export function YbComplaintsProvider({ children }) {
         );
         touch(
           target.id,
-          { assigneeId: next.id },
+          {},
           {
             by: user.id,
             at: today(),
@@ -147,7 +158,7 @@ export function YbComplaintsProvider({ children }) {
           return { ok: false, message: "Only Representative can end the flow." };
         if (!reason) return { ok: false, message: "Pick a decline reason." };
         if (!isOwner && !isRepresentative)
-          return { ok: false, message: `Only ${target.assigneeId ? "the owner" : "Representative"} can release.` };
+          return { ok: false, message: `Only ${ownerId ? "the owner" : "Representative"} can release.` };
 
         if (repeatInGroup && targetGroup) {
           const openMembers = complaints.filter(
@@ -247,47 +258,54 @@ export function YbComplaintsProvider({ children }) {
     [complaints, touch]
   );
 
-  // Group claim: only non-Representative staff become assignees.
+  // Group claim en-bloc: claimant becomes group owner; all open members
+  // share that owner as single assignee. Representative never claims.
   const claimAll = useCallback(
     (groupId, user) => {
       if (user.role === "Representative") return 0;
+      const group = caseGroups.find((g) => g.id === groupId);
+      if (!group) return 0;
       const members = complaints.filter(
-        (c) => c.case_group_id === groupId && !c.assigneeId && isOpenComplaint(c)
+        (c) => c.case_group_id === groupId && isOpenComplaint(c)
+      );
+      if (members.length === 0) return 0;
+      setCaseGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, owner_staff_id: user.id } : g))
       );
       for (const m of members) {
         touch(
           m.id,
-          { assigneeId: user.id },
-          { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed via case group` }
+          {},
+          { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed en-bloc via ${group.title}` }
         );
       }
       return members.length;
     },
-    [complaints, touch]
+    [caseGroups, complaints, touch]
   );
 
-  // Open a case group from pool selection. Representative opens it unassigned;
-  // Aide/Intern claim the selected complaints through the new group.
+  // Open a case group from pool selection (pool = no case_group_id).
+  // Representative opens it unowned; Aide/Intern claim the selection en-bloc.
   const createGroupWithSelection = useCallback(
     (ids, { title, category }, user) => {
       const unique = [...new Set(ids)];
       const eligible = unique.filter((id) => {
         const c = complaints.find((x) => x.id === id);
-        return c && !c.assigneeId && !c.case_group_id && isOpenComplaint(c);
+        return c && !c.case_group_id && isOpenComplaint(c);
       });
       if (eligible.length === 0)
         return { ok: false, message: "Select at least one open pool complaint." };
       if (!title.trim()) return { ok: false, message: "Give the case group a title." };
       const groupId = `cg-${Date.now()}`;
+      const claims = user.role !== "Representative";
       const group = {
         id: groupId,
         title: title.trim(),
         category,
         status: "Open",
-        owner_staff_id: user.id,
+        owner_staff_id: claims ? user.id : null,
       };
       setCaseGroups((prev) => [...prev, group]);
-      const claims = user.role !== "Representative";
       setComplaints((prev) =>
         prev.map((c) => {
           if (!eligible.includes(c.id)) return c;
@@ -301,7 +319,6 @@ export function YbComplaintsProvider({ children }) {
             ...c,
             case_group_id: groupId,
             case_group_confirmed: claims,
-            ...(claims ? { assigneeId: user.id } : {}),
             history,
           };
         })
@@ -352,8 +369,9 @@ export function YbComplaintsProvider({ children }) {
       complaints,
       caseGroups,
       groupMembers,
+      groupOwnerOf,
       touch,
-       releaseComplaint,
+      releaseComplaint,
       changeStatus,
       confirmMember,
       confirmGroup,
@@ -365,6 +383,7 @@ export function YbComplaintsProvider({ children }) {
       complaints,
       caseGroups,
       groupMembers,
+      groupOwnerOf,
       touch,
       releaseComplaint,
       changeStatus,

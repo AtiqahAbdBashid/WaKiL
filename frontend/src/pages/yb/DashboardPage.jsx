@@ -13,7 +13,7 @@ import { aduanPins } from "../../data/aduanPins";
 import { ybApi } from "../../lib/ybApi";
 import { ybComplaints } from "../../data/ybSample";
 import { formatDate, formatDisplayRef } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
+import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { AduanMixChart, AduanTrendChart } from "../../components/yb/AduanCharts";
 import AduanAging from "../../components/yb/AduanAging";
@@ -46,12 +46,17 @@ const isStale = (c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= 
 function MyQueueDashboard({ user }) {
   const firstName = user.name.split(" ")[0];
   const isIntern = user.role === "Intern";
-  const mine = useMemo(() => ybComplaints.filter((c) => c.assigneeId === user.id), [user.id]);
+  // Owner equals worker: a complaint's assignee is its group owner.
+  const ownerOf = (c) =>
+    c.case_group_id
+      ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
+      : null;
+  const mine = useMemo(() => ybComplaints.filter((c) => ownerOf(c) === user.id), [user.id]);
   const mineOpen = useMemo(() => mine.filter(isOpen).sort((a, b) => a.date.localeCompare(b.date)), [mine]);
   const mineStale = useMemo(() => mine.filter(isStale), [mine]);
   const mineFlagged = useMemo(() => mine.filter((c) => c.needsRepresentativeAttention), [mine]);
   const pool = useMemo(
-    () => ybComplaints.filter((c) => !c.assigneeId && c.status === "Pending").sort((a, b) => a.date.localeCompare(b.date)),
+    () => ybComplaints.filter((c) => !c.case_group_id && c.status === "Pending").sort((a, b) => a.date.localeCompare(b.date)),
     []
   );
   const activity = useMemo(
@@ -64,7 +69,7 @@ function MyQueueDashboard({ user }) {
   const stats = [
     { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress` },
     { label: "Gone stale", value: mineStale.length, hint: "In Progress untouched 60d+" },
-    { label: "In pool to claim", value: pool.length, hint: "Unassigned Pending" },
+    { label: "In pool to group", value: pool.length, hint: "Ungrouped Pending" },
     { label: "With Representative", value: mineFlagged.length, hint: "Flagged, awaiting review" },
   ];
 
@@ -82,7 +87,7 @@ function MyQueueDashboard({ user }) {
       <SampleNote label="Note:">This dashboard uses sample data until the complaint system is connected.</SampleNote>
       {isIntern && (
         <p className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft md:px-5">
-          Triage only. Claim from pool and move Pending to In Progress. Resolved and reassign stay with Representative and Aide.
+          Triage only. Group from pool and move Pending to In Progress. Resolved and reassign stay with Representative and Aide.
         </p>
       )}
 
@@ -107,7 +112,7 @@ function MyQueueDashboard({ user }) {
           }
         >
           {mineOpen.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">Queue clear. Claim from pool to keep it moving.</p>
+            <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">Queue clear. Group from pool to keep it moving.</p>
           ) : (
             <ul className="divide-y divide-line">
               {mineOpen.slice(0, 8).map((c) => (
@@ -132,7 +137,7 @@ function MyQueueDashboard({ user }) {
           title={`Pool · ${pool.length}`}
           action={
             <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-              Claim
+              Group
             </Link>
           }
         >
@@ -174,16 +179,21 @@ function MyQueueDashboard({ user }) {
 function RepresentativeDashboard() {
   const { user } = useYbAuth();
   const key = layoutKey(user?.id);
+  // Per-group workload: members share their group's owner as single assignee.
+  const ownerOf = (c) =>
+    c.case_group_id
+      ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
+      : null;
   const workload = useMemo(
     () =>
       ybStaff.map((s) => ({
         staff: s,
-        total: ybComplaints.filter((c) => c.assigneeId === s.id).length,
-        open: ybComplaints.filter((c) => c.assigneeId === s.id && c.status !== "Resolved" && c.status !== "Declined").length,
+        total: ybComplaints.filter((c) => ownerOf(c) === s.id).length,
+        open: ybComplaints.filter((c) => ownerOf(c) === s.id && c.status !== "Resolved" && c.status !== "Declined").length,
       })),
     []
   );
-  const pool = ybComplaints.filter((c) => !c.assigneeId).length;
+  const pool = ybComplaints.filter((c) => !c.case_group_id).length;
 
   const [negeri, setNegeri] = useState(null);
   const [mapError, setMapError] = useState(null);
@@ -332,7 +342,7 @@ function RepresentativeDashboard() {
             </tr>
           ))}
           <tr className="border-b border-line last:border-b-0">
-            <th scope="row" className="px-4 py-3 font-medium text-ink md:px-5">Pool <span className="text-ink-soft">· unassigned</span></th>
+            <th scope="row" className="px-4 py-3 font-medium text-ink md:px-5">Pool <span className="text-ink-soft">· ungrouped</span></th>
             <td className="tabular px-2 py-3 text-right text-base font-semibold text-ink">{pool}</td>
             <td className="tabular px-4 py-3 text-right text-base text-ink-soft md:px-5">{pool}</td>
           </tr>

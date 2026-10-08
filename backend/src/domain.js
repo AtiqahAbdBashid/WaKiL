@@ -30,8 +30,13 @@ export const canSetStatus = (role, status) => {
   return role === "Representative" || role === "Aide" || role === "Intern";
 };
 
-// Representative + Aide reassign anyone. Intern touches own claim only.
+// Representative + Aide move work between staff (group transfer, confirm,
+// create). Intern claims unowned groups and works owned groups only.
 export const canReassign = (role) => role === "Representative" || role === "Aide";
+
+// En-bloc claim: only Aide/Intern become group owners. Representative opens
+// groups unowned and never holds work (owner equals worker).
+export const canClaimGroup = (role) => role === "Aide" || role === "Intern";
 
 export const canManageStaff = (role) => role === "Representative";
 

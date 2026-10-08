@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
 import { ybCategories, ybComplaints } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
+import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 
 const TODAY = Date.parse("2026-10-03T00:00:00Z");
 const DAY = 86400000;
@@ -109,7 +109,12 @@ export default function AduanAging() {
                     <ul className="divide-y divide-line rounded-2xl border border-line">
                       {[{ id: null, name: "Unassigned" }, ...ybStaff].map((s) => {
                         const key = s.id ?? "unassigned";
-                        const n = items.filter((c) => (c.assigneeId ?? null) === (s.id ?? null)).length;
+                        const n = items.filter((c) => {
+                          const owner = c.case_group_id
+                            ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
+                            : null;
+                          return owner === (s.id ?? null);
+                        }).length;
                         if (!n) return null;
                         return (
                           <li key={key} className="flex items-center justify-between px-3 py-2 text-sm">
