@@ -239,9 +239,12 @@ export function createStore() {
   const caseGroups = seedCaseGroups();
   const citizens = seedCitizens();
 
-  const today = () => new Date().toISOString().slice(0, 10);
+  // Writer convention: every newly written point in time is a full ISO-8601
+  // timestamp (timezone-aware, matching the Python intake's datetimes), never
+  // a bare YYYY-MM-DD. Field names stay the same.
+  const nowIso = () => new Date().toISOString();
   const audit = (item, by, action, detail) => {
-    item.history.push({ by, at: today(), action, detail });
+    item.history.push({ by, at: nowIso(), action, detail });
   };
 
   // Expiry / deactivation returns owned groups' members to the pool.
