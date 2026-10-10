@@ -1,7 +1,7 @@
 // Assigned Complaints: group-first work queue. Staff see their own case
 // groups plus all other open groups read-only (pull model); Representative
 // sees all. Groups start collapsed; clicking a group expands its
-// complaints. All triage happens inside the complaint dialog.
+// complaints. All grouping happens inside the complaint dialog.
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Search } from "lucide-react";
@@ -227,7 +227,7 @@ export default function AssignedComplaintsPage() {
         title="Assigned Complaints"
         subtitle="Your case groups, plus other open groups you can pull from."
       />
-      <SampleNote label="Note:">Mock multi-staff triage. Your groups are fully editable; other open groups are read-only — open a complaint to pull it into a group you own.</SampleNote>
+      <SampleNote label="Note:">Mock multi-staff grouping. Your groups are fully editable; other open groups are read-only. Open a complaint to pull it into a group you own.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
         <div>

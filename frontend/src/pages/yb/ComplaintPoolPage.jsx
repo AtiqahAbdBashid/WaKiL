@@ -95,7 +95,7 @@ export default function ComplaintPoolPage() {
         title="Complaint Pool"
         subtitle="Ungrouped complaints. Open a complaint to group it and claim en-bloc via a Case Group."
       />
-      <SampleNote label="Note:">Mock multi-staff triage. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative groups and assigns to an Aide or Intern.</SampleNote>
+      <SampleNote label="Note:">Mock multi-staff grouping. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative groups and assigns to an Aide or Intern.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
         <div>

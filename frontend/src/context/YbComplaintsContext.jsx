@@ -1,4 +1,4 @@
-// Shared mock triage state so Assigned Complaints and Complaint Pool see the same data.
+// Shared mock grouping state so Assigned Complaints and Complaint Pool see the same data.
 // En-bloc only: assignment lives solely on Case_Group.owner_staff_id (owner
 // equals worker). Pool means no case_group_id; claiming/transfer moves whole
 // groups, never single complaints.

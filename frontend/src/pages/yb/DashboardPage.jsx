@@ -76,14 +76,14 @@ function MyQueueDashboard({ user }) {
         subtitle={`${mineOpen.length} open assigned to you · ${pool.length} waiting in pool.`}
         action={
           <Link to="/yb/complaints/assigned" className="inline-flex min-h-11 items-center rounded-2xl bg-brand px-4 text-sm font-bold text-white">
-            Open triage
+            Open assigned
           </Link>
         }
       />
       <SampleNote label="Note:">This dashboard uses sample data until the complaint system is connected.</SampleNote>
       {isIntern && (
         <p className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft md:px-5">
-          Triage only. Group from pool and move Pending to In Progress. Resolved and reassign stay with Representative and Aide.
+          Grouping only. Group from pool and move Pending to In Progress. Resolved and reassign stay with Representative and Aide.
         </p>
       )}
 
@@ -103,7 +103,7 @@ function MyQueueDashboard({ user }) {
           className="lg:col-span-2"
           action={
             <Link to="/yb/complaints/assigned" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-              Triage mine
+              View mine
             </Link>
           }
         >

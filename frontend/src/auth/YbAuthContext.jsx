@@ -27,7 +27,7 @@ export function YbAuthProvider({ children }) {
       canReassign: user?.role === "Representative" || user?.role === "Aide",
       // Representative assigns via reassign dropdown (incl self), no pool self-claim
       canClaim: user?.role === "Aide" || user?.role === "Intern",
-      // Interns triage only: cannot mark Resolved
+      // Interns group only: cannot mark Resolved
       canMarkResolved: user?.role === "Representative",
       login,
       logout,

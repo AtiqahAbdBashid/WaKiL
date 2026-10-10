@@ -1,4 +1,4 @@
-// YB notifications, derived read-only from the shared mock triage state.
+// YB notifications, derived read-only from the shared mock grouping state.
 // No NOTIFICATION entity exists in ER v3, so this file builds the feed from
 // COMPLAINT + history (COMPLAINT_UPDATE equivalent) + CASE_GROUP ownership.
 // Start-of-day pool digest and end-of-day review digest are computed against

@@ -274,7 +274,7 @@ export default function ComplaintDetailDialog({
           {poolMode ? (
             <div className="space-y-3">
               <div className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft">
-                Pending in the pool. Triage happens after claiming, under Assigned Complaints.
+                Pending in the pool. Grouping continues after claiming, under Assigned Complaints.
               </div>
               <div className="space-y-3 rounded-2xl border border-line px-4 py-3">
                 <h3 className="text-sm font-bold text-ink">Group this complaint</h3>
