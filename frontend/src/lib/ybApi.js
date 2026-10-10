@@ -38,6 +38,25 @@ export const ybApi = {
   confirmCaseGroup: (id, complaintIds) =>
     call(`/case-groups/${id}/confirm`, { method: "POST", body: JSON.stringify({ complaintIds }) }),
   claimAllCaseGroup: (id) => call(`/case-groups/${id}/claim-all`, { method: "POST" }),
+  // Future backend contract for the pull model: adding pool complaints to
+  // an existing group, pulling singles between groups, and pulling a whole
+  // group into another. Unused by the mock context; kept here so the UI
+  // handlers have a client shape to adopt.
+  addToCaseGroup: (groupId, complaintIds) =>
+    call(`/case-groups/${groupId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ complaintIds }),
+    }).then((r) => r.case_group),
+  moveComplaintToGroup: (complaintId, destGroupId) =>
+    call(`/aduan/${complaintId}/move`, {
+      method: "POST",
+      body: JSON.stringify({ dest_group_id: destGroupId }),
+    }).then((r) => r.aduan),
+  moveGroupToGroup: (sourceGroupId, destGroupId) =>
+    call(`/case-groups/${sourceGroupId}/pull`, {
+      method: "POST",
+      body: JSON.stringify({ dest_group_id: destGroupId }),
+    }).then((r) => r.case_group),
   kawasanGeojson: ({ level, state, kod }) => {
     const q = new URLSearchParams({ level });
     if (state) q.set("state", state);

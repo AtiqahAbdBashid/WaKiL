@@ -5,7 +5,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { ybComplaints } from "../data/ybSample";
-import { ybCaseGroups as initialGroups, ybStaff } from "../data/ybStaff";
+import { ybCaseGroups as initialGroups } from "../data/ybStaff";
 
 const YbComplaintsContext = createContext(null);
 
@@ -41,11 +41,13 @@ export function YbComplaintsProvider({ children }) {
     [caseGroups]
   );
 
-  // Whole-group release/transfer. Single transfer detaches the complaint
-  // into a new case group owned by the transferee; repeatInGroup transfers
-  // the entire group (owner equals worker for all members).
+  // Resolve-only release. Cross-owner movement happens via pull
+  // (moveToExistingGroup / moveGroupToGroup): the dest-group owner pulls
+  // singles or whole groups into a group they own. Source ownership is
+  // not required; dest must be open and owned by the caller (or
+  // Representative). Owner equals worker for all members.
   const releaseComplaint = useCallback(
-    (id, { mode, nextId, reason, repeatInGroup }, user) => {
+    (id, { mode, reason, repeatInGroup }, user) => {
       const target = complaints.find((x) => x.id === id);
       if (!target) return { ok: false, message: "Complaint not found." };
       if (!isOpenComplaint(target))
@@ -58,102 +60,6 @@ export function YbComplaintsProvider({ children }) {
 
       const isRepresentative = user.role === "Representative";
       const isOwner = !!ownerId && ownerId === user.id;
-
-      if (mode === "transfer") {
-        const next = ybStaff.find((s) => s.id === nextId && s.active);
-        if (!next || next.role === "Representative")
-          return { ok: false, message: "Pick an active Aide or Intern." };
-        if (!isOwner && !isRepresentative)
-          return { ok: false, message: `Only ${ownerId ? "the owner" : "Representative"} can release.` };
-
-        if (repeatInGroup && targetGroup) {
-          // Move all open members together; stay in group, move owner.
-          const members = complaints.filter(
-            (m) => m.case_group_id === targetGroup.id && isOpenComplaint(m)
-          );
-          if (members.length === 0)
-            return { ok: false, message: "No open members to transfer." };
-          setCaseGroups((prev) =>
-            prev.map((g) => (g.id === targetGroup.id ? { ...g, owner_staff_id: next.id } : g))
-          );
-          for (const m of members) {
-            touch(
-              m.id,
-              { status: "In Progress" },
-              {
-                by: user.id,
-                at: nowIso(),
-                action: "reassign",
-                detail: `${user.name} transferred ${targetGroup.title} to ${next.name} (shared across case group)`,
-              }
-            );
-          }
-          return {
-            ok: true,
-            count: members.length,
-            groupId: targetGroup.id,
-            message: `${targetGroup.title} transferred to ${next.name} · ${members.length} complaint${members.length === 1 ? "" : "s"}.`,
-          };
-        }
-
-        // Single detach: open new case group for transferee, detach target.
-        const groupId = `cg-${Date.now()}`;
-        const newGroup = {
-          id: groupId,
-          title: target.title,
-          category: target.category,
-          status: "Open",
-          owner_staff_id: next.id,
-        };
-        setCaseGroups((prev) => [...prev, newGroup]);
-        touch(
-          target.id,
-          {
-            case_group_id: groupId,
-            case_group_confirmed: true,
-            status: "In Progress",
-          },
-          {
-            by: user.id,
-            at: nowIso(),
-            action: "group-assign",
-            detail: `${user.name} moved ${target.title} to new case group ${newGroup.title}`,
-          }
-        );
-        touch(
-          target.id,
-          {},
-          {
-            by: user.id,
-            at: nowIso(),
-            action: "reassign",
-            detail: `${user.name} transferred to ${next.name} via new case group ${newGroup.title}`,
-          }
-        );
-
-        // Close old group when no open members remain (all ended or detached).
-        if (targetGroup) {
-          const remainingOpen = complaints.filter(
-            (m) =>
-              m.case_group_id === targetGroup.id &&
-              m.id !== target.id &&
-              isOpenComplaint(m)
-          );
-          if (remainingOpen.length === 0) {
-            setCaseGroups((prev) =>
-              prev.map((g) => (g.id === targetGroup.id ? { ...g, status: "Closed" } : g))
-            );
-          }
-          // Owner unchanged per rule.
-        }
-
-        return {
-          ok: true,
-          count: 1,
-          groupId: groupId,
-          message: `Complaint ${target.ref_no ?? target.id} transferred to ${next.name} in a new case group.`,
-        };
-      }
 
       if (mode === "end") {
         if (user.role !== "Representative")
@@ -365,6 +271,142 @@ export function YbComplaintsProvider({ children }) {
     [complaints]
   );
 
+  // Move a complaint into an existing open case group. Works for pool
+  // (no source group) and assigned (with source group) complaints.
+  // Pull model: source ownership is not required; dest must be open and
+  // owned by the caller (or Representative). Moved complaint always
+  // becomes In Progress + confirmed, matching Aide/Intern claim behavior.
+  const moveToExistingGroup = useCallback(
+    (id, destGroupId, user) => {
+      const target = complaints.find((x) => x.id === id);
+      if (!target) return { ok: false, message: "Complaint not found." };
+      if (!isOpenComplaint(target))
+        return { ok: false, message: "Only open complaints can be moved." };
+
+      const dest = caseGroups.find((g) => g.id === destGroupId) || null;
+      if (!dest) return { ok: false, message: "Pick a case group." };
+      if (dest.status !== "Open")
+        return { ok: false, message: "That case group is closed." };
+      if (target.case_group_id === dest.id)
+        return { ok: false, message: "Complaint is already in that case group." };
+
+      const isRepresentative = user.role === "Representative";
+      if (dest.owner_staff_id !== user.id && !isRepresentative)
+        return { ok: false, message: "Only the group owner or Representative can add to it." };
+
+      const sourceGroup = target.case_group_id
+        ? caseGroups.find((g) => g.id === target.case_group_id) || null
+        : null;
+
+      touch(
+        target.id,
+        {
+          case_group_id: dest.id,
+          case_group_confirmed: true,
+          status: "In Progress",
+        },
+        {
+          by: user.id,
+          at: nowIso(),
+          action: "group-assign",
+          detail: sourceGroup
+            ? `${user.name} moved ${target.title} from ${sourceGroup.title} to ${dest.title}`
+            : `${user.name} added ${target.title} to ${dest.title}`,
+        }
+      );
+      touch(
+        target.id,
+        {},
+        {
+          by: user.id,
+          at: nowIso(),
+          action: sourceGroup ? "reassign" : "claim",
+          detail: sourceGroup
+            ? `${user.name} transferred to ${dest.title}`
+            : `${user.name} claimed via ${dest.title}`,
+        }
+      );
+
+      // Close old group when no open members remain (all ended or detached).
+      if (sourceGroup) {
+        const remainingOpen = complaints.filter(
+          (m) =>
+            m.case_group_id === sourceGroup.id &&
+            m.id !== target.id &&
+            isOpenComplaint(m)
+        );
+        if (remainingOpen.length === 0) {
+          setCaseGroups((prev) =>
+            prev.map((g) => (g.id === sourceGroup.id ? { ...g, status: "Closed" } : g))
+          );
+        }
+      }
+
+      return {
+        ok: true,
+        count: 1,
+        groupId: dest.id,
+        message: sourceGroup
+          ? `Complaint ${target.ref_no ?? target.id} moved from ${sourceGroup.title} to ${dest.title}.`
+          : `Complaint ${target.ref_no ?? target.id} added to ${dest.title}.`,
+      };
+    },
+    [caseGroups, complaints, touch]
+  );
+
+  // Pull a whole case group into another open group the caller owns.
+  // Moves every open member; source ownership not required (pull model).
+  const moveGroupToGroup = useCallback(
+    (sourceGroupId, destGroupId, user) => {
+      const source = caseGroups.find((g) => g.id === sourceGroupId) || null;
+      const dest = caseGroups.find((g) => g.id === destGroupId) || null;
+      if (!source) return { ok: false, message: "Source case group not found." };
+      if (!dest) return { ok: false, message: "Pick a case group." };
+      if (source.id === dest.id)
+        return { ok: false, message: "Source and destination are the same group." };
+      if (source.status !== "Open" || dest.status !== "Open")
+        return { ok: false, message: "Both case groups must be open." };
+
+      const isRepresentative = user.role === "Representative";
+      if (dest.owner_staff_id !== user.id && !isRepresentative)
+        return { ok: false, message: "Only the group owner or Representative can add to it." };
+
+      const members = complaints.filter(
+        (m) => m.case_group_id === source.id && isOpenComplaint(m)
+      );
+      if (members.length === 0)
+        return { ok: false, message: "No open members to pull." };
+
+      for (const m of members) {
+        touch(
+          m.id,
+          {
+            case_group_id: dest.id,
+            case_group_confirmed: true,
+            status: "In Progress",
+          },
+          {
+            by: user.id,
+            at: nowIso(),
+            action: "group-assign",
+            detail: `${user.name} pulled ${m.title} from ${source.title} to ${dest.title} as part of group pull`,
+          }
+        );
+      }
+      setCaseGroups((prev) =>
+        prev.map((g) => (g.id === source.id ? { ...g, status: "Closed" } : g))
+      );
+
+      return {
+        ok: true,
+        count: members.length,
+        groupId: dest.id,
+        message: `${members.length} complaint${members.length === 1 ? "" : "s"} pulled from ${source.title} to ${dest.title}.`,
+      };
+    },
+    [caseGroups, complaints, touch]
+  );
+
   const addUpdate = useCallback(
     (id, { detail, attachmentName, repeatInGroup }, user) => {
       const target = complaints.find((x) => x.id === id);
@@ -406,6 +448,8 @@ export function YbComplaintsProvider({ children }) {
       confirmGroup,
       claimAll,
       createGroupWithSelection,
+      moveToExistingGroup,
+      moveGroupToGroup,
       addUpdate,
       setAttention,
     }),
@@ -420,6 +464,8 @@ export function YbComplaintsProvider({ children }) {
       confirmGroup,
       claimAll,
       createGroupWithSelection,
+      moveToExistingGroup,
+      moveGroupToGroup,
       addUpdate,
       setAttention,
     ]

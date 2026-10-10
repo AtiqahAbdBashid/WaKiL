@@ -1,6 +1,7 @@
-// Assigned Complaints: group-first work queue. Staff see the case groups they
-// opened (Representative sees all). Groups start collapsed; clicking a group
-// expands its complaints. All triage happens inside the complaint dialog.
+// Assigned Complaints: group-first work queue. Staff see their own case
+// groups plus all other open groups read-only (pull model); Representative
+// sees all. Groups start collapsed; clicking a group expands its
+// complaints. All triage happens inside the complaint dialog.
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Search } from "lucide-react";
@@ -12,17 +13,19 @@ import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
 import { formatDisplayRef, ybCategories, ybStatuses } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
+import { staffName } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 
 export default function AssignedComplaintsPage() {
-  const { user, canClaim, canReassign, canMarkResolved } = useYbAuth();
+  const { user, canClaim, canMarkResolved } = useYbAuth();
   const {
     complaints,
     caseGroups,
     groupMembers,
     releaseComplaint,
+    moveToExistingGroup,
+    moveGroupToGroup,
     confirmMember,
     addUpdate,
     setAttention,
@@ -42,19 +45,42 @@ export default function AssignedComplaintsPage() {
     (category === "All" || c.category === category) &&
     (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
-  const visibleGroups = caseGroups
+  const sortOpenFirst = (a, b) => {
+    if (a.status === "Open" && b.status !== "Open") return -1;
+    if (a.status !== "Open" && b.status === "Open") return 1;
+    return 0;
+  };
+
+  const myGroups = caseGroups
     .filter((g) => isRepresentative || g.owner_staff_id === user?.id)
-    .sort((a, b) => {
-      if (a.status === "Open" && b.status !== "Open") return -1;
-      if (a.status !== "Open" && b.status === "Open") return 1;
-      return 0;
-    });
+    .sort(sortOpenFirst);
+
+  // Pull model: everyone sees all other open groups read-only so they can
+  // pull singles or whole groups into a group they own. Representative
+  // already sees everything via myGroups, so the second list is empty.
+  const otherOpenGroups = isRepresentative
+    ? []
+    : caseGroups
+        .filter((g) => g.status === "Open" && g.owner_staff_id !== user?.id)
+        .sort(sortOpenFirst);
 
   const toggleGroup = (id) =>
     setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const onReleaseComplaint = (id, payload) => {
     const result = releaseComplaint(id, payload, user);
+    setAnnouncement(result.message || "");
+    return result;
+  };
+
+  const onMoveToGroup = (id, destGroupId) => {
+    const result = moveToExistingGroup(id, destGroupId, user);
+    setAnnouncement(result.message || "");
+    return result;
+  };
+
+  const onPullGroup = (sourceGroupId, destGroupId) => {
+    const result = moveGroupToGroup(sourceGroupId, destGroupId, user);
     setAnnouncement(result.message || "");
     return result;
   };
@@ -106,12 +132,24 @@ export default function AssignedComplaintsPage() {
       memberCount: members.filter((m) => isOpenComplaint(m)).length || members.length,
     };
   })();
-  const releaseCandidates = ybStaff.filter(
-    (s) =>
-      s.active &&
-      (s.role === "Aide" || s.role === "Intern") &&
-      s.id !== selectedOwnerId
-  );
+  const selectedSourceOpenCount = selected?.case_group_id
+    ? groupMembers(selected.case_group_id).filter((m) => isOpenComplaint(m)).length
+    : 0;
+  const groupCandidates = caseGroups
+    .filter(
+      (g) =>
+        g.status === "Open" &&
+        g.id !== selected?.case_group_id &&
+        (isRepresentative || g.owner_staff_id === user?.id)
+    )
+    .map((g) => {
+      const members = groupMembers(g.id);
+      return {
+        id: g.id,
+        title: g.title,
+        memberCount: members.filter((m) => isOpenComplaint(m)).length || members.length,
+      };
+    });
   const isSelectedOwner = !!selectedOwnerId && selectedOwnerId === user?.id;
   const canFlagSelected =
     !!selected &&
@@ -119,13 +157,89 @@ export default function AssignedComplaintsPage() {
       ? isSelectedOwner || isRepresentative
       : isSelectedOwner && !isRepresentative);
 
+  const renderGroupList = (groups) => (
+    <ul className="divide-y divide-line">
+      {groups.map((g) => {
+        const members = groupMembers(g.id);
+        const shown = members.filter(matches);
+        const tentative = members.filter((c) => !c.case_group_confirmed).length;
+        const expanded = expandedIds.includes(g.id);
+        return (
+          <li key={g.id} className="px-4 py-2 md:px-5">
+            <button
+              onClick={() => toggleGroup(g.id)}
+              aria-expanded={expanded}
+              aria-controls={`group-members-${g.id}`}
+              className="flex min-h-11 w-full items-center justify-between gap-3 py-2 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block font-bold text-ink">{g.title}</span>
+                <span className="block text-sm text-ink-soft">
+                  {g.category} · {staffName(g.owner_staff_id)} · {members.length} members
+                  {tentative > 0 ? ` · ${tentative} tentative` : " · all confirmed"}
+                  {g.status === "Closed" ? " · closed" : ""}
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-ink-soft transition-transform ${expanded ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+            {expanded && (
+              <div id={`group-members-${g.id}`} className="pb-2">
+                {members.length === 0 ? (
+                  <p className="mt-1 text-sm text-ink-soft">No members yet.</p>
+                ) : shown.length === 0 ? (
+                  <p className="mt-1 text-sm text-ink-soft">
+                    No members match these filters ({members.length} in group).
+                  </p>
+                ) : (
+                  <>
+                    {shown.length < members.length && (
+                      <p className="mt-1 text-xs text-ink-soft">
+                        Showing {shown.length} of {members.length} complaints.
+                      </p>
+                    )}
+                    <ul className="mt-1 divide-y divide-line border-t border-line">
+                      {shown.map((c) => (
+                        <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                          <div className="min-w-0">
+                            <button
+                              onClick={() => setSelectedId(c.id)}
+                              aria-haspopup="dialog"
+                              className="inline-flex min-h-11 items-center py-1 text-left font-bold text-ink underline decoration-2 underline-offset-4 hover:text-brand"
+                            >
+                              {c.title}
+                            </button>
+                            <p className="text-xs text-ink-soft">
+                              <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
+                              {" · "}{c.category} · {c.locality} · {staffName(g.owner_staff_id)}
+                              {c.case_group_confirmed ? " · confirmed" : " · tentative"}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Badge>{c.status}</Badge>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <div className="w-full space-y-8">
       <PageTitle
         title="Assigned Complaints"
-        subtitle="Case groups assigned to you. Open a group to work its complaints."
+        subtitle="Your case groups, plus other open groups you can pull from."
       />
-      <SampleNote label="Note:">Mock multi-staff triage. Staff see groups they opened; Representative sees all. All triage happens in the complaint dialog.</SampleNote>
+      <SampleNote label="Note:">Mock multi-staff triage. Your groups are fully editable; other open groups are read-only — open a complaint to pull it into a group you own.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
         <div>
@@ -154,8 +268,8 @@ export default function AssignedComplaintsPage() {
       <p role="status" className="sr-only">{announcement}</p>
       {announcement && <p className="text-sm font-bold text-brand">{announcement}</p>}
 
-      <Sheet title={`Case groups · ${visibleGroups.length}`}>
-        {visibleGroups.length === 0 ? (
+      <Sheet title={`My case groups · ${myGroups.length}`}>
+        {myGroups.length === 0 ? (
           <div className="space-y-3 px-4 py-10 text-center md:px-5">
             <p className="text-base text-ink-soft">No case groups assigned to you yet.</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
@@ -166,94 +280,37 @@ export default function AssignedComplaintsPage() {
             </div>
           </div>
         ) : (
-          <ul className="divide-y divide-line">
-            {visibleGroups.map((g) => {
-              const members = groupMembers(g.id);
-              const shown = members.filter(matches);
-              const tentative = members.filter((c) => !c.case_group_confirmed).length;
-              const expanded = expandedIds.includes(g.id);
-              return (
-                <li key={g.id} className="px-4 py-2 md:px-5">
-                  <button
-                    onClick={() => toggleGroup(g.id)}
-                    aria-expanded={expanded}
-                    aria-controls={`group-members-${g.id}`}
-                    className="flex min-h-11 w-full items-center justify-between gap-3 py-2 text-left"
-                  >
-                    <span className="min-w-0">
-                      <span className="block font-bold text-ink">{g.title}</span>
-                      <span className="block text-sm text-ink-soft">
-                        {g.category} · {staffName(g.owner_staff_id)} · {members.length} members
-                        {tentative > 0 ? ` · ${tentative} tentative` : " · all confirmed"}
-                        {g.status === "Closed" ? " · closed" : ""}
-                      </span>
-                    </span>
-                    <ChevronDown
-                      className={`h-5 w-5 shrink-0 text-ink-soft transition-transform ${expanded ? "rotate-180" : ""}`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                  {expanded && (
-                    <div id={`group-members-${g.id}`} className="pb-2">
-                      {members.length === 0 ? (
-                        <p className="mt-1 text-sm text-ink-soft">No members yet.</p>
-                      ) : shown.length === 0 ? (
-                        <p className="mt-1 text-sm text-ink-soft">
-                          No members match these filters ({members.length} in group).
-                        </p>
-                      ) : (
-                        <>
-                          {shown.length < members.length && (
-                            <p className="mt-1 text-xs text-ink-soft">
-                              Showing {shown.length} of {members.length} complaints.
-                            </p>
-                          )}
-                          <ul className="mt-1 divide-y divide-line border-t border-line">
-                            {shown.map((c) => (
-                              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                                <div className="min-w-0">
-                                  <button
-                                    onClick={() => setSelectedId(c.id)}
-                                    aria-haspopup="dialog"
-                                    className="inline-flex min-h-11 items-center py-1 text-left font-bold text-ink underline decoration-2 underline-offset-4 hover:text-brand"
-                                  >
-                                    {c.title}
-                                  </button>
-                                  <p className="text-xs text-ink-soft">
-                                    <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
-                                    {" · "}{c.category} · {c.locality} · {staffName(g.owner_staff_id)}
-                                    {c.case_group_confirmed ? " · confirmed" : " · tentative"}
-                                  </p>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                  <Badge>{c.status}</Badge>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          renderGroupList(myGroups)
         )}
       </Sheet>
+
+      {!isRepresentative && (
+        <Sheet title={`Other open groups · ${otherOpenGroups.length} · read-only`}>
+          {otherOpenGroups.length === 0 ? (
+            <div className="space-y-3 px-4 py-10 text-center md:px-5">
+              <p className="text-base text-ink-soft">No other open groups to pull from.</p>
+            </div>
+          ) : (
+            renderGroupList(otherOpenGroups)
+          )}
+        </Sheet>
+      )}
 
       <ComplaintDetailDialog
         key={`detail-${selectedId ?? "none"}`}
         complaint={selected}
         user={user}
         canClaim={canClaim}
-        canReassign={canReassign}
         caseGroup={selectedCaseGroup}
         onClose={() => setSelectedId(null)}
         onClaim={() => {}}
         onAddUpdate={onAddUpdate}
         onReleaseComplaint={onReleaseComplaint}
-        releaseCandidates={releaseCandidates}
+        groupCandidates={groupCandidates}
+        onTransferToGroup={onMoveToGroup}
+        sourceGroupId={selected?.case_group_id ?? null}
+        sourceOpenCount={selectedSourceOpenCount}
+        onPullGroup={onPullGroup}
         canMarkResolved={canMarkResolved}
         onConfirmMember={onConfirmMember}
         onToggleAttention={onToggleAttention}

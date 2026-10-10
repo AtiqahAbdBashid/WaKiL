@@ -18,7 +18,8 @@ import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsCont
 
 export default function ComplaintPoolPage() {
   const { user, canClaim } = useYbAuth();
-  const { complaints, createGroupWithSelection } = useYbComplaints();
+  const { complaints, caseGroups, groupMembers, createGroupWithSelection, moveToExistingGroup } =
+    useYbComplaints();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [announcement, setAnnouncement] = useState("");
@@ -53,6 +54,22 @@ export default function ComplaintPoolPage() {
     if (!result.ok) return;
     setClaimSeedId(null);
     setSelectedId(null);
+  };
+
+  const isRepresentative = user?.role === "Representative";
+  const groupCandidates = caseGroups
+    .filter((g) => g.status === "Open" && (isRepresentative || g.owner_staff_id === user?.id))
+    .map((g) => ({
+      id: g.id,
+      title: g.title,
+      memberCount: groupMembers(g.id).filter((m) => isOpenComplaint(m)).length,
+    }));
+
+  const onTransferToGroup = (id, destGroupId) => {
+    const result = moveToExistingGroup(id, destGroupId, user);
+    setAnnouncement(result.message || "");
+    if (result.ok) setSelectedId(null);
+    return result;
   };
 
   const clear = () => {
@@ -146,11 +163,12 @@ export default function ComplaintPoolPage() {
         complaint={complaints.find((x) => x.id === selectedId) ?? null}
         user={user}
         canClaim={canClaim}
-        canReassign={false}
         poolMode
         onClose={() => setSelectedId(null)}
         onClaim={onClaimRequest}
         onAddUpdate={() => {}}
+        groupCandidates={groupCandidates}
+        onTransferToGroup={onTransferToGroup}
       />
 
       <ClaimCaseGroupDialog

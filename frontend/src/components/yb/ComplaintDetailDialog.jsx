@@ -23,15 +23,18 @@ export default function ComplaintDetailDialog({
   complaint: c,
   user,
   canClaim,
-  canReassign,
   poolMode = false,
   caseGroup = null,
-  releaseCandidates = [],
+  groupCandidates = [],
+  sourceGroupId = null,
+  sourceOpenCount = 0,
   canMarkResolved = false,
   onClose,
   onClaim,
   onAddUpdate,
   onReleaseComplaint,
+  onTransferToGroup,
+  onPullGroup,
   onConfirmMember,
   onToggleAttention,
   canFlag,
@@ -44,11 +47,14 @@ export default function ComplaintDetailDialog({
   const [repeatInGroup, setRepeatInGroup] = useState(true);
   const [confirmNote, setConfirmNote] = useState("");
   const [showRelease, setShowRelease] = useState(false);
-  const [releaseMode, setReleaseMode] = useState("transfer");
-  const [releaseTo, setReleaseTo] = useState("");
+  const [releaseMode, setReleaseMode] = useState("transfer-group");
   const [releaseReason, setReleaseReason] = useState("");
   const [releaseRepeat, setReleaseRepeat] = useState(true);
   const [releaseError, setReleaseError] = useState("");
+  const [groupDestId, setGroupDestId] = useState("");
+  const [groupError, setGroupError] = useState("");
+  const [pullGroupDestId, setPullGroupDestId] = useState("");
+  const [pullError, setPullError] = useState("");
   const [flagError, setFlagError] = useState("");
   const fileInputRef = useRef(null);
 
@@ -108,11 +114,42 @@ export default function ComplaintDetailDialog({
 
   const resetRelease = () => {
     setShowRelease(false);
-    setReleaseMode("transfer");
-    setReleaseTo("");
+    setReleaseMode("transfer-group");
     setReleaseReason("");
     setReleaseRepeat(true);
     setReleaseError("");
+    setGroupDestId("");
+    setGroupError("");
+  };
+
+  const submitGroupMove = (e) => {
+    e.preventDefault();
+    setGroupError("");
+    if (!groupDestId) {
+      setGroupError("Pick the case group taking this complaint.");
+      return;
+    }
+    const result = onTransferToGroup?.(c.id, groupDestId);
+    if (!result?.ok) {
+      setGroupError(result?.message ?? "Move did not go through.");
+    }
+  };
+
+  const submitPullGroup = (e) => {
+    e.preventDefault();
+    setPullError("");
+    if (!sourceGroupId) {
+      setPullError("This complaint is not in a case group.");
+      return;
+    }
+    if (!pullGroupDestId) {
+      setPullError("Pick the group taking the whole case group.");
+      return;
+    }
+    const result = onPullGroup?.(sourceGroupId, pullGroupDestId);
+    if (!result?.ok) {
+      setPullError(result?.message ?? "Pull did not go through.");
+    }
   };
 
   const submitRelease = (e) => {
@@ -126,8 +163,17 @@ export default function ComplaintDetailDialog({
       setReleaseError(`Only ${ownerName} can release.`);
       return;
     }
-    if (releaseMode === "transfer" && !releaseTo) {
-      setReleaseError("Pick the Aide or Intern taking this complaint.");
+    if (releaseMode === "transfer-group") {
+      if (!groupDestId) {
+        setReleaseError("Pick the case group taking this complaint.");
+        return;
+      }
+      const result = onTransferToGroup?.(c.id, groupDestId);
+      if (!result?.ok) {
+        setReleaseError(result?.message ?? "Move did not go through.");
+        return;
+      }
+      resetRelease();
       return;
     }
     if (releaseMode === "end") {
@@ -142,7 +188,6 @@ export default function ComplaintDetailDialog({
     }
     const result = onReleaseComplaint?.(c.id, {
       mode: releaseMode,
-      nextId: releaseTo || null,
       reason: releaseReason || null,
       repeatInGroup: caseGroup ? releaseRepeat : false,
     });
@@ -210,7 +255,7 @@ export default function ComplaintDetailDialog({
                 <dt className="font-bold text-ink">Case group</dt>
                 <dd className="text-ink">
                   {c.case_group_id}{c.case_group_confirmed ? " · confirmed" : " · tentative"}
-                  {!c.case_group_confirmed && canReassign && onConfirmMember && (
+                  {!c.case_group_confirmed && (isOwner || isRepresentative) && onConfirmMember && (
                     <span className="ml-3 inline-flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => {
@@ -250,8 +295,44 @@ export default function ComplaintDetailDialog({
           </dl>
 
           {poolMode ? (
-            <div className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft">
-              Pending in the pool. Triage happens after claiming, under Assigned Complaints.
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft">
+                Pending in the pool. Triage happens after claiming, under Assigned Complaints.
+              </div>
+              {onTransferToGroup && (
+                <form onSubmit={submitGroupMove} className="space-y-2 rounded-2xl border border-line px-4 py-3">
+                  <h3 className="text-sm font-bold text-ink">Add to existing case group</h3>
+                  {groupCandidates.length === 0 ? (
+                    <p className="text-sm text-ink-soft">
+                      No open groups you own. Claim as a new group instead.
+                    </p>
+                  ) : (
+                    <>
+                      <label htmlFor="dlg-group-dest" className={labelClass}>Case group</label>
+                      <select
+                        id="dlg-group-dest"
+                        value={groupDestId}
+                        onChange={(e) => setGroupDestId(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Pick group…</option>
+                        {groupCandidates.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-ink-soft">
+                        Moves to In Progress under that group owner.
+                      </p>
+                    </>
+                  )}
+                  {groupError && <p role="alert" className="text-sm font-medium text-red-700">{groupError}</p>}
+                  {groupCandidates.length > 0 && (
+                    <button type="submit" className={secondaryButton}>Add to group</button>
+                  )}
+                </form>
+              )}
             </div>
           ) : (
             <div>
@@ -260,7 +341,7 @@ export default function ComplaintDetailDialog({
                 <Badge>{c.status}</Badge>
               </div>
               <p className="mt-1 text-xs text-ink-soft">
-                Claiming moves a complaint to In Progress. Ending resolves it. Release a single complaint below.
+                Claiming moves a complaint to In Progress. Ending resolves it. Move it to another group you own below.
               </p>
             </div>
           )}
@@ -386,13 +467,11 @@ export default function ComplaintDetailDialog({
             )}
           </div>
 
-          {!poolMode && onReleaseComplaint && (
+          {!poolMode && onReleaseComplaint && canRelease && (
             <div className="space-y-3 border-t border-line pt-4">
               <h3 className="text-sm font-bold text-ink">Release</h3>
               {!ownerId ? (
                 <p className="text-sm text-ink-soft">Ungrouped complaint has nothing to release. Group it first.</p>
-              ) : !canRelease ? (
-                <p className="text-sm text-ink-soft">Only {ownerName} can release.</p>
               ) : !isOpenComplaint(c) ? (
                 <p className="text-sm text-ink-soft">Complaint is closed. Nothing to release.</p>
               ) : !showRelease ? (
@@ -407,15 +486,15 @@ export default function ComplaintDetailDialog({
                       <input
                         type="radio"
                         name="release-mode"
-                        value="transfer"
-                        checked={releaseMode === "transfer"}
-                        onChange={() => setReleaseMode("transfer")}
+                        value="transfer-group"
+                        checked={releaseMode === "transfer-group"}
+                        onChange={() => setReleaseMode("transfer-group")}
                         className="mt-1 h-4 w-4 accent-brand"
                       />
                       <span className="text-sm">
-                        <span className="block font-bold text-ink">Transfer to another staff</span>
+                        <span className="block font-bold text-ink">Move to another group you own</span>
                         <span className="block text-xs text-ink-soft">
-                          Moves to an Aide or Intern. A single transfer opens a new Case Group for the recipient.
+                          Moves into an existing open group you own. The complaint becomes In Progress there.
                         </span>
                       </span>
                     </label>
@@ -437,22 +516,24 @@ export default function ComplaintDetailDialog({
                     </label>
                   </fieldset>
 
-                  {releaseMode === "transfer" ? (
+                  {releaseMode === "transfer-group" ? (
                     <div>
-                      {releaseCandidates.length === 0 ? (
-                        <p className="text-sm text-ink-soft">No other active Aide or Intern to take it.</p>
+                      {!onTransferToGroup || groupCandidates.length === 0 ? (
+                        <p className="text-sm text-ink-soft">No other open groups you own to take it.</p>
                       ) : (
                         <>
-                          <label htmlFor="dlg-release-to" className={labelClass}>Transfer to</label>
+                          <label htmlFor="dlg-release-group" className={labelClass}>Move to group</label>
                           <select
-                            id="dlg-release-to"
-                            value={releaseTo}
-                            onChange={(e) => setReleaseTo(e.target.value)}
+                            id="dlg-release-group"
+                            value={groupDestId}
+                            onChange={(e) => setGroupDestId(e.target.value)}
                             className={inputClass}
                           >
-                            <option value="">Pick staff…</option>
-                            {releaseCandidates.map((s) => (
-                              <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                            <option value="">Pick group…</option>
+                            {groupCandidates.map((g) => (
+                              <option key={g.id} value={g.id}>
+                                {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                              </option>
                             ))}
                           </select>
                         </>
@@ -486,7 +567,7 @@ export default function ComplaintDetailDialog({
                     </fieldset>
                   )}
 
-                  {caseGroup && (
+                  {caseGroup && releaseMode !== "transfer-group" && (
                     <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-line bg-canvas px-3 py-2 text-sm text-ink">
                       <input
                         type="checkbox"
@@ -506,11 +587,87 @@ export default function ComplaintDetailDialog({
                   {releaseError && <p role="alert" className="text-sm font-medium text-red-700">{releaseError}</p>}
                   <div className="flex flex-wrap items-center gap-2">
                     <button type="submit" className={secondaryButton}>
-                      {releaseMode === "transfer" ? "Transfer complaint" : "End and resolve"}
+                      {releaseMode === "transfer-group" ? "Move to group" : "End and resolve"}
                     </button>
                     <button type="button" onClick={resetRelease} className={textLink}>Cancel</button>
                   </div>
                 </form>
+              )}
+            </div>
+          )}
+
+          {!poolMode && !canRelease && onTransferToGroup && (
+            <div className="space-y-3 border-t border-line pt-4">
+              <h3 className="text-sm font-bold text-ink">Pull into my group</h3>
+              <p className="text-sm text-ink-soft">
+                Owned by {ownerName}. You can pull this complaint, or its whole case group, into a group you own.
+              </p>
+              {!isOpenComplaint(c) ? (
+                <p className="text-sm text-ink-soft">Complaint is closed. Nothing to pull.</p>
+              ) : (
+                <>
+                  <form onSubmit={submitGroupMove} className="space-y-2">
+                    {groupCandidates.length === 0 ? (
+                      <p className="text-sm text-ink-soft">
+                        No open groups you own. Open one from the pool first.
+                      </p>
+                    ) : (
+                      <>
+                        <label htmlFor="dlg-pull-dest" className={labelClass}>Pull this complaint to</label>
+                        <select
+                          id="dlg-pull-dest"
+                          value={groupDestId}
+                          onChange={(e) => setGroupDestId(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="">Pick group…</option>
+                          {groupCandidates.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                    {groupError && <p role="alert" className="text-sm font-medium text-red-700">{groupError}</p>}
+                    {groupCandidates.length > 0 && (
+                      <button type="submit" className={secondaryButton}>Pull complaint</button>
+                    )}
+                  </form>
+                  {onPullGroup && sourceGroupId && sourceOpenCount > 1 && (
+                    <form onSubmit={submitPullGroup} className="space-y-2 rounded-2xl border border-line px-4 py-3">
+                      <h4 className="text-sm font-bold text-ink">
+                        Pull whole case group · {sourceOpenCount} open
+                      </h4>
+                      {groupCandidates.length === 0 ? (
+                        <p className="text-sm text-ink-soft">No open groups you own to take it.</p>
+                      ) : (
+                        <>
+                          <label htmlFor="dlg-pull-group-dest" className={labelClass}>Pull all open to</label>
+                          <select
+                            id="dlg-pull-group-dest"
+                            value={pullGroupDestId}
+                            onChange={(e) => setPullGroupDestId(e.target.value)}
+                            className={inputClass}
+                          >
+                            <option value="">Pick group…</option>
+                            {groupCandidates.map((g) => (
+                              <option key={g.id} value={g.id}>
+                                {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      )}
+                      {pullError && <p role="alert" className="text-sm font-medium text-red-700">{pullError}</p>}
+                      {groupCandidates.length > 0 && (
+                        <button type="submit" className={secondaryButton}>
+                          Pull {sourceOpenCount} complaints
+                        </button>
+                      )}
+                    </form>
+                  )}
+                </>
               )}
             </div>
           )}
