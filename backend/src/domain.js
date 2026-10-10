@@ -1,6 +1,12 @@
 // Canonical domain: statuses follow the 3-state lifecycle, not the frontend mock labels.
 // Mock used New/In Review/In Action/Resolved; backend canonical is
 // Pending/In Progress/Resolved.
+//
+// Stored-vs-derived disagreement (ERD v3 Decision 7, see
+// docs/Wakil_ERDiagram_Mermaid_3.md integrity notes): the CHECK is canonical —
+// Pending means case_group_id IS NULL, In Progress/Resolved mean assigned —
+// and COMPLAINT_STATUS_VIEW only derives the expected status from
+// case_group_id for the read path. Never trust the view over the CHECK.
 export const STATUSES = ["Pending", "In Progress", "Resolved"];
 
 export const LEGACY_STATUS_MAP = {

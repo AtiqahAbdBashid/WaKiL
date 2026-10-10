@@ -73,6 +73,12 @@ class Complaint(Base):
     summary: Mapped[str] = mapped_column(Text)
     confidence: Mapped[float] = mapped_column(Float)
     manual_review: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Lifecycle (ERD v3 Decision 7): exactly Pending / In Progress / Resolved,
+    # intake always Pending, no fourth state. The staff-side rule for
+    # stored-vs-derived disagreement (CHECK canonical, COMPLAINT_STATUS_VIEW
+    # deriving expected status from case_group_id) lives in
+    # docs/Wakil_ERDiagram_Mermaid_3.md integrity notes; Resolved stays
+    # terminal and owner-only there.
     status: Mapped[str] = mapped_column(String(20), default="Pending")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
