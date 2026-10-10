@@ -3,7 +3,6 @@ import {
   Bell,
   Inbox,
   LayoutGrid,
-  Map,
   Settings,
   UserCheck,
   Users,
@@ -16,7 +15,6 @@ export const ybNavItems = [
   // Users glyph marks the staff roster; `to` matches the SidebarNav link contract.
   { label: 'Staff', to: '/yb/staff', icon: Users },
   { label: 'Analytics', to: '/yb/analytics', icon: BarChart3 },
-  { label: 'Map', to: '/yb/map', icon: Map },
   { label: 'Notifications', to: '/yb/notifications', icon: Bell, count: 3 },
   { label: 'Settings', to: '/yb/settings', icon: Settings },
 ]

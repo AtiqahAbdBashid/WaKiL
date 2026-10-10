@@ -19,7 +19,6 @@ import AnalyticsPage from '../pages/yb/AnalyticsPage'
 import AssignedComplaintsPage from '../pages/yb/AssignedComplaintsPage'
 import ComplaintPoolPage from '../pages/yb/ComplaintPoolPage'
 import YbDashboardPage from '../pages/yb/DashboardPage'
-import MapPage from '../pages/yb/MapPage'
 import YbNotificationsPage from '../pages/yb/NotificationsPage'
 import SettingsPage from '../pages/yb/SettingsPage'
 import StaffPage from '../pages/yb/StaffPage'
@@ -54,7 +53,6 @@ export default function AppRoutes() {
         <Route path="complaints/pool" element={<ComplaintPoolPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="map" element={<MapPage />} />
         <Route path="notifications" element={<YbNotificationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

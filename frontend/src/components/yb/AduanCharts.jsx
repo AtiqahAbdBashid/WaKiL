@@ -35,7 +35,7 @@ const weekStart = (iso) => {
 };
 const weekLabel = (iso) => new Date(parseStamp(iso)).toLocaleDateString("en-MY", { day: "numeric", month: "short", timeZone: "UTC" });
 
-export function AduanMixChart() {
+export function AduanMixChart({ hideAnalyticsLink = false }) {
   const [view, setView] = useState("Bar");
   const byStatus = useMemo(
     () => ybStatuses.map((s) => ({ label: s, count: ybComplaints.filter((c) => c.status === s).length })),
@@ -79,11 +79,13 @@ export function AduanMixChart() {
           )}
         </ResponsiveContainer>
       </div>
+      {hideAnalyticsLink ? null : (
       <div className="flex justify-end px-4 pb-3 md:px-5">
         <Link to="/yb/analytics" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
           Analytics
         </Link>
       </div>
+      )}
     </Sheet>
   );
 }

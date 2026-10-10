@@ -281,7 +281,7 @@ function RepresentativeDashboard() {
       title={`Kawasan: ${ybKawasan.state}`}
       className="h-full"
       action={
-        <Link to="/yb/map" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
+        <Link to="/yb/analytics?tab=map" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
           Full map
         </Link>
       }
