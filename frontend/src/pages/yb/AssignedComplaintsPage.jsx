@@ -12,7 +12,7 @@ import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
-import { formatDisplayRef, ybCategories } from "../../data/ybSample";
+import { formatDate, formatDisplayRef, ybCategories } from "../../data/ybSample";
 import { staffName } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
@@ -53,6 +53,13 @@ export default function AssignedComplaintsPage() {
     [complaints]
   );
   const mineFlagged = useMemo(() => mine.filter((c) => c.needsRepresentativeAttention), [mine]);
+  const flaggedForReview = useMemo(
+    () =>
+      mine
+        .filter((c) => c.needsRepresentativeAttention && isOpenComplaint(c))
+        .sort((a, b) => Date.parse(a.date) - Date.parse(b.date)),
+    [mine]
+  );
   const queueStats = [
     { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress`, box: "border-brand/20 bg-brand-soft", valueClass: "text-brand-dark" },
     { label: "Gone stale", value: mineStale.length, hint: "In Progress untouched 60d+", box: "border-accent/20 bg-accent-soft", valueClass: "text-accent-dark" },
@@ -267,6 +274,47 @@ export default function AssignedComplaintsPage() {
         ))}
       </dl>
 
+      <p role="status" className="sr-only">{announcement}</p>
+      {announcement && <p className="text-sm font-bold text-brand">{announcement}</p>}
+
+      {isRepresentative && (
+        <Sheet title={`Flagged for review · ${flaggedForReview.length}`}>
+          {flaggedForReview.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">Nothing flagged for review.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {flaggedForReview.map((c) => {
+                const group = caseGroups.find((g) => g.id === c.case_group_id) ?? null;
+                const flagBy = (c.history ?? []).find((h) => h.action === "flag");
+                return (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 md:px-5">
+                    <div className="min-w-0 flex-1">
+                      <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
+                      <button
+                        onClick={() => setSelectedId(c.id)}
+                        aria-haspopup="dialog"
+                        className="inline-flex min-h-11 items-center py-1 text-left font-bold text-ink underline decoration-2 underline-offset-4 hover:text-brand"
+                      >
+                        {c.title}
+                      </button>
+                      <p className="text-xs text-ink-soft">
+                        {c.category} · {c.locality}
+                        {group ? ` · ${group.title} · ${staffName(group.owner_staff_id)}` : ""}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        {flagBy?.by ? `${staffName(flagBy.by)} flagged · ` : ""}
+                        {flagBy?.at ? formatDate(flagBy.at) : formatDate(c.updatedAt)}
+                      </p>
+                    </div>
+                    <Badge>{c.status}</Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Sheet>
+      )}
+
       <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
         <div>
           <label htmlFor="assigned-category" className={labelClass}>Category</label>
@@ -283,9 +331,6 @@ export default function AssignedComplaintsPage() {
           </div>
         </div>
       </div>
-
-      <p role="status" className="sr-only">{announcement}</p>
-      {announcement && <p className="text-sm font-bold text-brand">{announcement}</p>}
 
       <Sheet title={`My case groups · ${myGroupsFiltered.length}`}>
         {myGroups.length === 0 ? (
