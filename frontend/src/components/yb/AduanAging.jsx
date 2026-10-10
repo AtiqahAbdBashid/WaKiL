@@ -1,9 +1,11 @@
 // Aging view: all aduans grouped by age from created date. Expand bucket for category/staff split.
+// By staff split is Representative-only; Aide and Intern see category only.
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
+import { useYbAuth } from "../../auth/YbAuthContext";
 import { parseStamp, ybCategories, ybComplaints } from "../../data/ybSample";
 import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 
@@ -26,8 +28,11 @@ function bucketOf(c) {
 }
 
 export default function AduanAging() {
+  const { canViewStaff } = useYbAuth();
   const [open, setOpen] = useState("0-30");
   const [mode, setMode] = useState("category");
+
+  const effectiveMode = canViewStaff ? mode : "category";
 
   const groups = useMemo(() => {
     const out = Object.fromEntries(BUCKETS.map((b) => [b.id, []]));
@@ -68,6 +73,7 @@ export default function AduanAging() {
               </button>
               {isOpen && (
                 <div className="px-4 pb-4 md:px-5 md:pl-11">
+                  {canViewStaff && (
                   <div role="group" aria-label={`Breakdown for ${b.label}`} className="flex gap-1 pb-2">
                     {["category", "staff"].map((m) => (
                       <button
@@ -81,9 +87,10 @@ export default function AduanAging() {
                       </button>
                     ))}
                   </div>
+                  )}
                   {items.length === 0 ? (
                     <p className="py-2 text-sm text-ink-soft">No aduans in this range.</p>
-                  ) : mode === "category" ? (
+                  ) : effectiveMode === "category" ? (
                     <ul className="divide-y divide-line rounded-2xl border border-line">
                       {ybCategories.map((cat) => {
                         const n = items.filter((c) => c.category === cat).length;

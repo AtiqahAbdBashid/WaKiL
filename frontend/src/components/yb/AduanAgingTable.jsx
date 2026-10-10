@@ -1,8 +1,10 @@
 // Aging table: one row per category or staff. Status counts plus open aduans with no update in each window.
+// By staff grouping is Representative-only; Aide and Intern see category only.
 import { useMemo, useState } from "react";
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
+import { useYbAuth } from "../../auth/YbAuthContext";
 import { parseStamp, ybCategories, ybComplaints } from "../../data/ybSample";
 import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 
@@ -38,7 +40,10 @@ const COLS = [
 ];
 
 export default function AduanAgingTable() {
+  const { canViewStaff } = useYbAuth();
   const [mode, setMode] = useState("category");
+
+  const effectiveMode = canViewStaff ? mode : "category";
 
   const rows = useMemo(() => {
     // Owner equals worker: staff rows count members of groups they own.
@@ -47,14 +52,14 @@ export default function AduanAgingTable() {
         ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
         : null;
     const groups =
-      mode === "category"
+      effectiveMode === "category"
         ? ybCategories.map((cat) => ({ key: cat, label: cat, sub: null, items: ybComplaints.filter((c) => c.category === cat) }))
         : [
             ...ybStaff.map((s) => ({ key: s.id, label: staffName(s.id), sub: s.role, items: ybComplaints.filter((c) => ownerOf(c) === s.id) })),
             { key: "unassigned", label: "Unassigned", sub: "pool", items: ybComplaints.filter((c) => !ownerOf(c)) },
           ];
     return groups.map((g) => ({ ...g, stats: rowStats(g.items) })).sort((a, b) => b.stats.total - a.stats.total);
-  }, [mode]);
+  }, [effectiveMode]);
 
   const foot = useMemo(() => rowStats(ybComplaints), []);
 
@@ -63,6 +68,7 @@ export default function AduanAgingTable() {
       title="Aging table"
       className="h-full"
       action={
+        canViewStaff ? (
         <div className="flex" role="group" aria-label="Table grouping">
           {["category", "staff"].map((m) => (
             <button
@@ -76,6 +82,7 @@ export default function AduanAgingTable() {
             </button>
           ))}
         </div>
+        ) : null
       }
     >
       <p className="px-4 pt-3 text-xs text-ink-soft md:px-5">
@@ -85,7 +92,7 @@ export default function AduanAgingTable() {
         <table className="w-full min-w-180 text-left text-sm">
           <thead>
             <tr className="border-b border-ink text-xs text-ink-soft">
-              <th scope="col" className="py-2 pr-3 font-bold">{mode === "category" ? "Category" : "Staff"}</th>
+              <th scope="col" className="py-2 pr-3 font-bold">{effectiveMode === "category" ? "Category" : "Staff"}</th>
               {COLS.map((c) => (
                 <th key={c.id} scope="col" className="tabular px-2 py-2 text-right font-bold">{c.label}</th>
               ))}
