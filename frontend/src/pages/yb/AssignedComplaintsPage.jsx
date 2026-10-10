@@ -2,7 +2,7 @@
 // groups plus all other open groups read-only (pull model); Representative
 // sees all. Groups start collapsed; clicking a group expands its
 // complaints. All grouping happens inside the complaint dialog.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Search } from "lucide-react";
 
@@ -23,6 +23,7 @@ export default function AssignedComplaintsPage() {
     complaints,
     caseGroups,
     groupMembers,
+    groupOwnerOf,
     releaseComplaint,
     moveToExistingGroup,
     moveGroupToGroup,
@@ -37,6 +38,28 @@ export default function AssignedComplaintsPage() {
   const [expandedIds, setExpandedIds] = useState([]);
 
   const isRepresentative = user?.role === "Representative";
+
+  const STALE_CUT = Date.parse("2026-10-03T00:00:00Z") - 60 * 86400000;
+  const mine = useMemo(
+    () => complaints.filter((c) => isRepresentative || groupOwnerOf(c) === user?.id),
+    [complaints, groupOwnerOf, isRepresentative, user?.id]
+  );
+  const mineOpen = useMemo(() => mine.filter((c) => isOpenComplaint(c)), [mine]);
+  const mineStale = useMemo(
+    () => mine.filter((c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= STALE_CUT),
+    [mine]
+  );
+  const poolToGroup = useMemo(
+    () => complaints.filter((c) => !c.case_group_id && c.status === "Pending"),
+    [complaints]
+  );
+  const mineFlagged = useMemo(() => mine.filter((c) => c.needsRepresentativeAttention), [mine]);
+  const queueStats = [
+    { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress`, box: "border-brand/20 bg-brand-soft", valueClass: "text-brand-dark" },
+    { label: "Gone stale", value: mineStale.length, hint: "In Progress untouched 60d+", box: "border-accent/20 bg-accent-soft", valueClass: "text-accent-dark" },
+    { label: "In pool to group", value: poolToGroup.length, hint: "Ungrouped Pending", box: "border-mint/20 bg-mint-soft", valueClass: "text-mint-dark" },
+    { label: "With Representative", value: mineFlagged.length, hint: "Flagged, awaiting review", box: "border-line bg-paper-raised", valueClass: "text-ink" },
+  ];
 
   const q = query.trim().toLowerCase();
   const matches = (c) =>
@@ -228,6 +251,16 @@ export default function AssignedComplaintsPage() {
         subtitle="Your case groups, plus other open groups you can pull from."
       />
       <SampleNote label="Note:">Mock multi-staff grouping. Your groups are fully editable; other open groups are read-only. Open a complaint to pull it into a group you own.</SampleNote>
+
+      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {queueStats.map((s) => (
+          <div key={s.label} className={`rounded-2xl border px-4 py-3 ${s.box}`}>
+            <dt className="text-xs font-bold uppercase tracking-wide text-ink-soft">{s.label}</dt>
+            <dd className={`tabular mt-1 text-3xl font-extrabold ${s.valueClass}`}>{s.value}</dd>
+            <dd className="mt-0.5 text-xs text-ink-soft">{s.hint}</dd>
+          </div>
+        ))}
+      </dl>
 
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
         <div>

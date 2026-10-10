@@ -63,10 +63,10 @@ function MyQueueDashboard({ user }) {
     [complaints, user.id]
   );
   const stats = [
-    { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress` },
-    { label: "Gone stale", value: mineStale.length, hint: "In Progress untouched 60d+" },
-    { label: "In pool to group", value: pool.length, hint: "Ungrouped Pending" },
-    { label: "With Representative", value: mineFlagged.length, hint: "Flagged, awaiting review" },
+    { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress`, box: "border-brand/20 bg-brand-soft", valueClass: "text-brand-dark" },
+    { label: "Gone stale", value: mineStale.length, hint: "In Progress untouched 60d+", box: "border-accent/20 bg-accent-soft", valueClass: "text-accent-dark" },
+    { label: "In pool to group", value: pool.length, hint: "Ungrouped Pending", box: "border-mint/20 bg-mint-soft", valueClass: "text-mint-dark" },
+    { label: "With Representative", value: mineFlagged.length, hint: "Flagged, awaiting review", box: "border-line bg-paper-raised", valueClass: "text-ink" },
   ];
 
   return (
@@ -89,9 +89,9 @@ function MyQueueDashboard({ user }) {
 
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-line bg-white px-4 py-3">
+          <div key={s.label} className={`rounded-2xl border px-4 py-3 ${s.box}`}>
             <dt className="text-xs font-bold uppercase tracking-wide text-ink-soft">{s.label}</dt>
-            <dd className="tabular mt-1 text-3xl font-extrabold text-ink">{s.value}</dd>
+            <dd className={`tabular mt-1 text-3xl font-extrabold ${s.valueClass}`}>{s.value}</dd>
             <dd className="mt-0.5 text-xs text-ink-soft">{s.hint}</dd>
           </div>
         ))}
