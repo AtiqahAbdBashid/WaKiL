@@ -34,7 +34,7 @@ export default function ComplaintPoolPage() {
 
   const pool = complaints
     .filter((c) => !c.case_group_id && matches(c))
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
   const seedComplaint = complaints.find((x) => x.id === claimSeedId) ?? null;
   const claimCandidates = pool.filter(

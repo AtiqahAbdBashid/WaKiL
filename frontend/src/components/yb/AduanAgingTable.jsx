@@ -4,14 +4,14 @@ import { Link } from "react-router-dom";
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
-import { ybCategories, ybComplaints } from "../../data/ybSample";
+import { parseStamp, ybCategories, ybComplaints } from "../../data/ybSample";
 import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 
 const TODAY = Date.parse("2026-10-03T00:00:00Z");
 const DAY = 86400000;
 
 const isOpen = (c) => c.status === "Pending" || c.status === "In Progress";
-const staleAge = (c) => Math.floor((TODAY - Date.parse(`${c.updatedAt}T00:00:00Z`)) / DAY);
+const staleAge = (c) => Math.floor((TODAY - parseStamp(c.updatedAt)) / DAY);
 const inRange = (c, min, max) => isOpen(c) && staleAge(c) >= min && staleAge(c) <= max;
 
 function rowStats(items) {

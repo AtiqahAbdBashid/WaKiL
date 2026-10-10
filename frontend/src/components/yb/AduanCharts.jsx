@@ -5,7 +5,7 @@ import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContaine
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
-import { ybCategories, ybComplaints, ybStatuses } from "../../data/ybSample";
+import { parseStamp, ybCategories, ybComplaints, ybStatuses } from "../../data/ybSample";
 
 const STATUS_COLORS = {
   Pending: "#B45309",
@@ -29,11 +29,11 @@ function ViewToggle({ options, value, onChange, label }) {
 }
 
 const weekStart = (iso) => {
-  const d = new Date(`${iso}T00:00:00Z`);
+  const d = new Date(parseStamp(iso));
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   return d.toISOString().slice(0, 10);
 };
-const weekLabel = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-MY", { day: "numeric", month: "short", timeZone: "UTC" });
+const weekLabel = (iso) => new Date(parseStamp(iso)).toLocaleDateString("en-MY", { day: "numeric", month: "short", timeZone: "UTC" });
 
 export function AduanMixChart() {
   const [view, setView] = useState("Bar");

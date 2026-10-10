@@ -9,7 +9,8 @@ import { ybCaseGroups as initialGroups, ybStaff } from "../data/ybStaff";
 
 const YbComplaintsContext = createContext(null);
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Full ISO-8601 timestamp, same convention as the backend writer and seeds.
+const nowIso = () => new Date().toISOString();
 
 export const isOpenComplaint = (c) => c.status === "Pending" || c.status === "In Progress";
 
@@ -27,7 +28,7 @@ export function YbComplaintsProvider({ children }) {
     (groupId) =>
       complaints
         .filter((c) => c.case_group_id === groupId)
-        .sort((a, b) => b.date.localeCompare(a.date)),
+        .sort((a, b) => Date.parse(b.date) - Date.parse(a.date)),
     [complaints]
   );
 
@@ -81,7 +82,7 @@ export function YbComplaintsProvider({ children }) {
               { status: "In Progress" },
               {
                 by: user.id,
-                at: today(),
+                at: nowIso(),
                 action: "reassign",
                 detail: `${user.name} transferred ${targetGroup.title} to ${next.name} (shared across case group)`,
               }
@@ -114,7 +115,7 @@ export function YbComplaintsProvider({ children }) {
           },
           {
             by: user.id,
-            at: today(),
+            at: nowIso(),
             action: "group-assign",
             detail: `${user.name} moved ${target.title} to new case group ${newGroup.title}`,
           }
@@ -124,7 +125,7 @@ export function YbComplaintsProvider({ children }) {
           {},
           {
             by: user.id,
-            at: today(),
+            at: nowIso(),
             action: "reassign",
             detail: `${user.name} transferred to ${next.name} via new case group ${newGroup.title}`,
           }
@@ -171,7 +172,7 @@ export function YbComplaintsProvider({ children }) {
             touch(
               m.id,
               { status: "Resolved" },
-              { by: user.id, at: today(), action: "resolve", detail: `Flow ended: ${reason}` }
+              { by: user.id, at: nowIso(), action: "resolve", detail: `Flow ended: ${reason}` }
             );
           }
           // Every open member resolved, so all members are ended now.
@@ -190,7 +191,7 @@ export function YbComplaintsProvider({ children }) {
         touch(
           target.id,
           { status: "Resolved" },
-          { by: user.id, at: today(), action: "resolve", detail: `Flow ended: ${reason}` }
+          { by: user.id, at: nowIso(), action: "resolve", detail: `Flow ended: ${reason}` }
         );
         if (targetGroup) {
           const remainingOpen = complaints.filter(
@@ -222,7 +223,7 @@ export function YbComplaintsProvider({ children }) {
       touch(
         id,
         { case_group_confirmed: true },
-        { by: user.id, at: today(), action: "group-confirm", detail: `${user.name} confirmed membership` }
+        { by: user.id, at: nowIso(), action: "group-confirm", detail: `${user.name} confirmed membership` }
       );
       return true;
     },
@@ -238,7 +239,7 @@ export function YbComplaintsProvider({ children }) {
         touch(
           m.id,
           { case_group_confirmed: true },
-          { by: user.id, at: today(), action: "group-confirm", detail: `${user.name} confirmed membership` }
+          { by: user.id, at: nowIso(), action: "group-confirm", detail: `${user.name} confirmed membership` }
         );
       }
       return members.length;
@@ -264,7 +265,7 @@ export function YbComplaintsProvider({ children }) {
         touch(
           m.id,
           { status: "In Progress" },
-          { by: user.id, at: today(), action: "claim", detail: `${user.name} claimed en-bloc via ${group.title}` }
+          { by: user.id, at: nowIso(), action: "claim", detail: `${user.name} claimed en-bloc via ${group.title}` }
         );
       }
       return members.length;
@@ -299,10 +300,10 @@ export function YbComplaintsProvider({ children }) {
           if (!eligible.includes(c.id)) return c;
           const history = [
             ...(c.history ?? []),
-            { by: user.id, at: today(), action: "group-assign", detail: `${user.name} opened ${group.title}` },
+            { by: user.id, at: nowIso(), action: "group-assign", detail: `${user.name} opened ${group.title}` },
           ];
           if (claims)
-            history.push({ by: user.id, at: today(), action: "claim", detail: `${user.name} claimed via ${group.title}` });
+            history.push({ by: user.id, at: nowIso(), action: "claim", detail: `${user.name} claimed via ${group.title}` });
           return {
             ...c,
             case_group_id: groupId,
@@ -331,7 +332,7 @@ export function YbComplaintsProvider({ children }) {
       const target = complaints.find((x) => x.id === id);
       const entryFor = (suffix) => ({
         by: user.id,
-        at: today(),
+        at: nowIso(),
         action: "update",
         detail: suffix ? `${detail} (${suffix})` : detail,
         ...(attachmentName ? { attachmentName } : {}),
@@ -343,13 +344,13 @@ export function YbComplaintsProvider({ children }) {
         for (const m of members) {
           touch(
             m.id,
-            { updatedAt: today() },
+            { updatedAt: nowIso() },
             entryFor(members.length > 1 ? `shared across case group` : null)
           );
         }
         return { count: members.length, groupId: target.case_group_id };
       }
-      touch(id, { updatedAt: today() }, entryFor(null));
+      touch(id, { updatedAt: nowIso() }, entryFor(null));
       return { count: 1, groupId: null };
     },
     [complaints, touch]

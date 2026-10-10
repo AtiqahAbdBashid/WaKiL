@@ -52,17 +52,17 @@ function MyQueueDashboard({ user }) {
       ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
       : null;
   const mine = useMemo(() => ybComplaints.filter((c) => ownerOf(c) === user.id), [user.id]);
-  const mineOpen = useMemo(() => mine.filter(isOpen).sort((a, b) => a.date.localeCompare(b.date)), [mine]);
+  const mineOpen = useMemo(() => mine.filter(isOpen).sort((a, b) => Date.parse(a.date) - Date.parse(b.date)), [mine]);
   const mineStale = useMemo(() => mine.filter(isStale), [mine]);
   const mineFlagged = useMemo(() => mine.filter((c) => c.needsRepresentativeAttention), [mine]);
   const pool = useMemo(
-    () => ybComplaints.filter((c) => !c.case_group_id && c.status === "Pending").sort((a, b) => a.date.localeCompare(b.date)),
+    () => ybComplaints.filter((c) => !c.case_group_id && c.status === "Pending").sort((a, b) => Date.parse(a.date) - Date.parse(b.date)),
     []
   );
   const activity = useMemo(
     () =>
       ybComplaints.flatMap((c) => (c.history ?? []).filter((h) => h.by === user.id).map((h) => ({ ...h, ref: c.id, title: c.title })))
-        .sort((a, b) => b.at.localeCompare(a.at))
+        .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
         .slice(0, 5),
     [user.id]
   );

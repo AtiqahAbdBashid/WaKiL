@@ -4,6 +4,7 @@ import PageTitle from "../../components/ui/PageTitle";
 import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import { inputClass, labelClass, primaryButton } from "../../components/ui/styles";
+import { formatDate } from "../../data/ybSample";
 import { ybStaff as initial } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 
@@ -21,7 +22,7 @@ export default function StaffPage() {
     if (!email.trim()) return;
     setStaff((prev) => [
       ...prev,
-      { id: `u-${Date.now()}`, name: email.split("@")[0], role, email, active: true, expiresAt: expiry || null, initials: email.slice(0, 2).toUpperCase() },
+      { id: `u-${Date.now()}`, name: email.split("@")[0], role, email, active: true, expiresAt: expiry ? `${expiry}T23:59:59+08:00` : null, initials: email.slice(0, 2).toUpperCase() },
     ]);
     setEmail("");
     setExpiry("");
@@ -42,7 +43,7 @@ export default function StaffPage() {
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5">
               <div>
                 <p className="font-bold text-ink">{s.name} · {s.role}</p>
-                <p className="text-sm text-ink-soft">{s.email}{s.expiresAt ? ` · ends ${s.expiresAt}` : ""}</p>
+                <p className="text-sm text-ink-soft">{s.email}{s.expiresAt ? ` · ends ${formatDate(s.expiresAt)}` : ""}</p>
                 {!s.active && <p className="text-sm font-bold text-brand">Deactivated</p>}
                 {isExpired(s) && <p className="text-sm font-bold text-brand">Expired</p>}
               </div>

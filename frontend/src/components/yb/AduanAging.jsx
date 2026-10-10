@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
-import { ybCategories, ybComplaints } from "../../data/ybSample";
+import { parseStamp, ybCategories, ybComplaints } from "../../data/ybSample";
 import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
 
 const TODAY = Date.parse("2026-10-03T00:00:00Z");
@@ -19,7 +19,7 @@ const BUCKETS = [
   { id: "180+", label: "180+ days", min: 181, max: Infinity },
 ];
 
-const ageDays = (c) => Math.floor((TODAY - Date.parse(`${c.date}T00:00:00Z`)) / DAY);
+const ageDays = (c) => Math.floor((TODAY - parseStamp(c.date)) / DAY);
 
 function bucketOf(c) {
   const age = ageDays(c);

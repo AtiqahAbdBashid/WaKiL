@@ -23,7 +23,7 @@ const rank = (c) =>
 function getAttentionList() {
   return ybComplaints
     .filter((c) => c.needsRepresentativeAttention || (c.status === "Pending" && !c.case_group_id) || isStale(c))
-    .sort((a, b) => rank(a) - rank(b) || a.date.localeCompare(b.date));
+    .sort((a, b) => rank(a) - rank(b) || Date.parse(a.date) - Date.parse(b.date));
 }
 
 export default function AttentionList() {
