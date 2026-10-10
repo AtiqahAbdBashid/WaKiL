@@ -12,7 +12,7 @@ import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
-import { formatDisplayRef, ybCategories, ybStatuses } from "../../data/ybSample";
+import { formatDisplayRef, ybCategories } from "../../data/ybSample";
 import { staffName } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
@@ -30,7 +30,6 @@ export default function AssignedComplaintsPage() {
     addUpdate,
     setAttention,
   } = useYbComplaints();
-  const [status, setStatus] = useState("All");
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [announcement, setAnnouncement] = useState("");
@@ -63,7 +62,6 @@ export default function AssignedComplaintsPage() {
 
   const q = query.trim().toLowerCase();
   const matches = (c) =>
-    (status === "All" || c.status === status) &&
     (category === "All" || c.category === category) &&
     (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
@@ -126,7 +124,6 @@ export default function AssignedComplaintsPage() {
   };
 
   const clear = () => {
-    setStatus("All");
     setCategory("All");
     setQuery("");
   };
@@ -262,14 +259,7 @@ export default function AssignedComplaintsPage() {
         ))}
       </dl>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
-        <div>
-          <label htmlFor="assigned-status" className={labelClass}>Status</label>
-          <select id="assigned-status" value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
-            <option>All</option>
-            {ybStatuses.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </div>
+      <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
         <div>
           <label htmlFor="assigned-category" className={labelClass}>Category</label>
           <select id="assigned-category" value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
