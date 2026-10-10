@@ -15,6 +15,7 @@ export const ybNavItems = [
   // Users glyph marks the staff roster; `to` matches the SidebarNav link contract.
   { label: 'Staff', to: '/yb/staff', icon: Users },
   { label: 'Analytics', to: '/yb/analytics', icon: BarChart3 },
-  { label: 'Notifications', to: '/yb/notifications', icon: Bell, count: 3 },
+  // Count is derived in YbSidebar via ybUnreadCount; keep 0 as fallback.
+  { label: 'Notifications', to: '/yb/notifications', icon: Bell, count: 0 },
   { label: 'Settings', to: '/yb/settings', icon: Settings },
 ]

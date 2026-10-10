@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 
 import { ybNavItems } from '../../data/ybNav'
+import { ybUnreadCount } from '../../data/ybNotifications'
 // import { ybComplaints } from '../../data/ybSample'
 import { useYbAuth } from '../../auth/YbAuthContext'
+import { useYbComplaints } from '../../context/YbComplaintsContext'
 import SidebarNav from '../dashboard/SidebarNav'
 
 // const dotTone = {
@@ -26,7 +28,12 @@ import SidebarNav from '../dashboard/SidebarNav'
 
 export default function YbSidebar() {
   const { user: authUser, canViewStaff } = useYbAuth()
-  const items = canViewStaff ? ybNavItems : ybNavItems.filter((item) => item.to !== '/yb/staff')
+  const { complaints, caseGroups } = useYbComplaints()
+  const unread = ybUnreadCount(complaints, caseGroups, authUser)
+  const base = canViewStaff ? ybNavItems : ybNavItems.filter((item) => item.to !== '/yb/staff')
+  const items = base.map((item) =>
+    item.to === '/yb/notifications' ? { ...item, count: unread } : item
+  )
   const user = authUser
     ? { name: authUser.name, initials: authUser.initials, role: authUser.role }
     : { name: 'Service Officer', initials: 'SO', role: 'YB Office' }
