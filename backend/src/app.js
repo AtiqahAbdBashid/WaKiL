@@ -4,7 +4,7 @@
 // (base64 staff id). Frontend sends it as `Authorization: Bearer <token>`.
 import express from "express";
 import cors from "cors";
-import { canClaimGroup, canManageStaff, canReassign, canSetStatus, canViewStaff, hasAccess, isValidStatus, ROLES, STATUSES } from "./domain.js";
+import { canClaimGroup, canManageStaff, canReassign, canResolveOwned, canSetStatus, canViewStaff, hasAccess, isTerminalStatus, isValidStatus, ROLES, STATUSES } from "./domain.js";
 import { createStore } from "./store.js";
 import { featureContains, kodFeature, negeriView } from "./kawasan.js";
 
@@ -89,7 +89,19 @@ export function createApp(store = createStore()) {
       return res.status(400).json({ error: "assignment via case group only" });
     if (status !== undefined) {
       if (!isValidStatus(status)) return res.status(400).json({ error: `status in ${STATUSES}` });
-      if (!canSetStatus(me.role, status)) return res.status(403).json({ error: "only Representative closes" });
+      if (isTerminalStatus(item.status) && status !== item.status)
+        return res.status(400).json({ error: "resolved is terminal" });
+      if (status === "Resolved" && status !== item.status) {
+        // Owner-only resolve: requester must own the Complaint's Case Group.
+        // Effective group covers a same-request group move; pool (null) never resolves.
+        const effectiveGroupId = case_group_id !== undefined ? case_group_id : item.case_group_id;
+        if (!effectiveGroupId) return res.status(403).json({ error: "pool must be grouped and claimed" });
+        const group = store.getCaseGroup(effectiveGroupId);
+        if (!canResolveOwned(group?.owner_staff_id, me.id))
+          return res.status(403).json({ error: "only group owner resolves" });
+      } else if (status !== item.status && !canSetStatus(me.role, status)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
     }
     if (case_group_id !== undefined && case_group_id !== null && !store.getCaseGroup(case_group_id))
       return res.status(400).json({ error: "case group not found" });

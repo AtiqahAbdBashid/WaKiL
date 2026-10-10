@@ -22,13 +22,25 @@ export const isExpired = (staff, now = new Date()) =>
 export const hasAccess = (staff, now = new Date()) =>
   !!staff && staff.active && !isExpired(staff, now);
 
-// Only Representative closes aduan (Resolved). Aide + Intern work
-// Pending/In Progress only.
+// Status moves between open states are role-wide: Representative, Aide and
+// Intern can set Pending/In Progress. Resolved is never granted by role
+// alone — only the owning Staff of the Complaint's Case Group resolves (see
+// canResolveOwned); the route enforces ownership, so this returns false for
+// Resolved.
 export const canSetStatus = (role, status) => {
   if (!isValidStatus(status)) return false;
-  if (status === "Resolved") return role === "Representative";
+  if (status === "Resolved") return false;
   return role === "Representative" || role === "Aide" || role === "Intern";
 };
+
+// Owner-only resolve: requester must match Case_Group.owner_staff_id.
+// Representative never owns groups, so never resolves directly. Pool
+// complaints (null owner) cannot resolve — group and claim first.
+export const canResolveOwned = (ownerStaffId, requesterId) =>
+  !!ownerStaffId && ownerStaffId === requesterId;
+
+// Resolved is terminal: no status change out of Resolved (no reopen).
+export const isTerminalStatus = (status) => status === "Resolved";
 
 // Representative + Aide move work between staff (group transfer, confirm,
 // create). Intern claims unowned groups and works owned groups only.
