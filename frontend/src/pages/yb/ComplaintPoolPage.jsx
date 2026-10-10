@@ -12,7 +12,7 @@ import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import ClaimCaseGroupDialog from "../../components/yb/ClaimCaseGroupDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
 import { formatDate, formatDisplayRef, ybCategories } from "../../data/ybSample";
-import { staffName } from "../../data/ybStaff";
+import { staffName, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 
@@ -47,14 +47,25 @@ export default function ComplaintPoolPage() {
     setClaimSeedId(id);
   };
 
-  const onConfirmClaim = ({ title, category: groupCategory, extraIds }) => {
+  const onConfirmClaim = ({ title, category: groupCategory, extraIds, ownerStaffId }) => {
     const ids = [claimSeedId, ...(extraIds ?? [])];
-    const result = createGroupWithSelection(ids, { title, category: groupCategory }, user);
+    const result = createGroupWithSelection(
+      ids,
+      { title, category: groupCategory, ownerStaffId },
+      user
+    );
     setAnnouncement(result.message);
     if (!result.ok) return;
     setClaimSeedId(null);
     setSelectedId(null);
   };
+
+  const assignableStaff = ybStaff.filter(
+    (s) =>
+      s.active &&
+      !(s.expiresAt && new Date(s.expiresAt) < new Date()) &&
+      (s.role === "Aide" || s.role === "Intern")
+  );
 
   const isRepresentative = user?.role === "Representative";
   const groupCandidates = caseGroups
@@ -62,6 +73,7 @@ export default function ComplaintPoolPage() {
     .map((g) => ({
       id: g.id,
       title: g.title,
+      ownerName: staffName(g.owner_staff_id),
       memberCount: groupMembers(g.id).filter((m) => isOpenComplaint(m)).length,
     }));
 
@@ -83,7 +95,7 @@ export default function ComplaintPoolPage() {
         title="Complaint Pool"
         subtitle="Ungrouped complaints. Open a complaint to group it and claim en-bloc via a Case Group."
       />
-      <SampleNote label="Note:">Mock multi-staff triage. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative opens groups unowned.</SampleNote>
+      <SampleNote label="Note:">Mock multi-staff triage. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative groups and assigns to an Aide or Intern.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
         <div>
@@ -106,7 +118,7 @@ export default function ComplaintPoolPage() {
       {announcement && (
         <p className="text-sm font-bold text-brand">
           {announcement}{" "}
-          {announcement.includes("claimed") && (
+          {(announcement.includes("claimed") || announcement.includes("assigned")) && (
             <Link to="/yb/complaints/assigned" className={`${textLink} ml-1`}>View assigned</Link>
           )}
         </p>
@@ -178,6 +190,7 @@ export default function ComplaintPoolPage() {
         user={user}
         canClaim={canClaim}
         defaultCategory={seedComplaint?.category ?? ybCategories[0]}
+        assignees={assignableStaff}
         onConfirm={onConfirmClaim}
         onClose={() => setClaimSeedId(null)}
       />

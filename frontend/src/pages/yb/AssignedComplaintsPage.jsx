@@ -26,7 +26,6 @@ export default function AssignedComplaintsPage() {
     releaseComplaint,
     moveToExistingGroup,
     moveGroupToGroup,
-    confirmMember,
     addUpdate,
     setAttention,
   } = useYbComplaints();
@@ -85,15 +84,6 @@ export default function AssignedComplaintsPage() {
     return result;
   };
 
-  const onConfirmMember = (id) => {
-    if (!confirmMember(id, user)) {
-      setAnnouncement(`Complaint ${formatDisplayRef(id)} is closed and cannot be confirmed.`);
-      return false;
-    }
-    setAnnouncement(`Complaint ${formatDisplayRef(id)} membership confirmed.`);
-    return true;
-  };
-
   const onAddUpdate = (id, { detail, attachmentName, repeatInGroup }) => {
     const result = addUpdate(id, { detail, attachmentName, repeatInGroup }, user);
     setAnnouncement(
@@ -147,6 +137,7 @@ export default function AssignedComplaintsPage() {
       return {
         id: g.id,
         title: g.title,
+        ownerName: staffName(g.owner_staff_id),
         memberCount: members.filter((m) => isOpenComplaint(m)).length || members.length,
       };
     });
@@ -162,7 +153,6 @@ export default function AssignedComplaintsPage() {
       {groups.map((g) => {
         const members = groupMembers(g.id);
         const shown = members.filter(matches);
-        const tentative = members.filter((c) => !c.case_group_confirmed).length;
         const expanded = expandedIds.includes(g.id);
         return (
           <li key={g.id} className="px-4 py-2 md:px-5">
@@ -176,7 +166,6 @@ export default function AssignedComplaintsPage() {
                 <span className="block font-bold text-ink">{g.title}</span>
                 <span className="block text-sm text-ink-soft">
                   {staffName(g.owner_staff_id)} · {members.length} members
-                  {tentative > 0 ? ` · ${tentative} tentative` : " · all confirmed"}
                   {g.status === "Closed" ? " · closed" : ""}
                 </span>
               </span>
@@ -214,7 +203,6 @@ export default function AssignedComplaintsPage() {
                             <p className="text-xs text-ink-soft">
                               <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
                               {" · "}{c.category} · {c.locality}
-                              {c.case_group_confirmed ? " · confirmed" : " · tentative"}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
@@ -312,7 +300,6 @@ export default function AssignedComplaintsPage() {
         sourceOpenCount={selectedSourceOpenCount}
         onPullGroup={onPullGroup}
         canMarkResolved={canMarkResolved}
-        onConfirmMember={onConfirmMember}
         onToggleAttention={onToggleAttention}
         canFlag={canFlagSelected}
       />

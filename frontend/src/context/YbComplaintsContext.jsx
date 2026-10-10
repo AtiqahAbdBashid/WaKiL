@@ -5,7 +5,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { ybComplaints } from "../data/ybSample";
-import { ybCaseGroups as initialGroups } from "../data/ybStaff";
+import { ybCaseGroups as initialGroups, ybStaff } from "../data/ybStaff";
 
 const YbComplaintsContext = createContext(null);
 
@@ -32,7 +32,7 @@ export function YbComplaintsProvider({ children }) {
     [complaints]
   );
 
-  // Single assignee derivation: the group's owner. Null means pool/unowned.
+  // Single assignee derivation: the group's owner. Null means pool (no case group).
   const groupOwnerOf = useCallback(
     (complaint) => {
       if (!complaint?.case_group_id) return null;
@@ -122,37 +122,6 @@ export function YbComplaintsProvider({ children }) {
     [caseGroups, complaints, touch]
   );
 
-  const confirmMember = useCallback(
-    (id, user) => {
-      const c = complaints.find((x) => x.id === id);
-      if (!c || !c.case_group_id || !isOpenComplaint(c)) return false;
-      touch(
-        id,
-        { case_group_confirmed: true },
-        { by: user.id, at: nowIso(), action: "group-confirm", detail: `${user.name} confirmed membership` }
-      );
-      return true;
-    },
-    [complaints, touch]
-  );
-
-  const confirmGroup = useCallback(
-    (groupId, user) => {
-      const members = complaints.filter(
-        (c) => c.case_group_id === groupId && !c.case_group_confirmed && isOpenComplaint(c)
-      );
-      for (const m of members) {
-        touch(
-          m.id,
-          { case_group_confirmed: true },
-          { by: user.id, at: nowIso(), action: "group-confirm", detail: `${user.name} confirmed membership` }
-        );
-      }
-      return members.length;
-    },
-    [complaints, touch]
-  );
-
   // Representative review flag. Only claimed In Progress complaints can be
   // flagged; pool Pending stays unflaggable until claimed en-bloc.
   const setAttention = useCallback(
@@ -191,36 +160,12 @@ export function YbComplaintsProvider({ children }) {
     [caseGroups, complaints, touch]
   );
 
-  // Group claim en-bloc: claimant becomes group owner; all open members
-  // share that owner as single assignee. Representative never claims.
-  const claimAll = useCallback(
-    (groupId, user) => {
-      if (user.role === "Representative") return 0;
-      const group = caseGroups.find((g) => g.id === groupId);
-      if (!group) return 0;
-      const members = complaints.filter(
-        (c) => c.case_group_id === groupId && isOpenComplaint(c)
-      );
-      if (members.length === 0) return 0;
-      setCaseGroups((prev) =>
-        prev.map((g) => (g.id === groupId ? { ...g, owner_staff_id: user.id } : g))
-      );
-      for (const m of members) {
-        touch(
-          m.id,
-          { status: "In Progress" },
-          { by: user.id, at: nowIso(), action: "claim", detail: `${user.name} claimed en-bloc via ${group.title}` }
-        );
-      }
-      return members.length;
-    },
-    [caseGroups, complaints, touch]
-  );
-
   // Open a case group from pool selection (pool = no case_group_id).
-  // Representative opens it unowned; Aide/Intern claim the selection en-bloc.
+  // Aide/Intern claim the selection en-bloc; Representative opens the group
+  // already assigned to an Aide or Intern. Joining a group is final and moves
+  // every member straight to In Progress under the group owner.
   const createGroupWithSelection = useCallback(
-    (ids, { title, category }, user) => {
+    (ids, { title, category, ownerStaffId }, user) => {
       const unique = [...new Set(ids)];
       const eligible = unique.filter((id) => {
         const c = complaints.find((x) => x.id === id);
@@ -229,14 +174,29 @@ export function YbComplaintsProvider({ children }) {
       if (eligible.length === 0)
         return { ok: false, message: "Select at least one open pool complaint." };
       if (!title.trim()) return { ok: false, message: "Give the case group a title." };
+      const isRepresentative = user.role === "Representative";
+      let ownerId = user.id;
+      let ownerName = user.name;
+      if (isRepresentative) {
+        const assignee = ybStaff.find(
+          (s) =>
+            s.id === ownerStaffId &&
+            s.active &&
+            !(s.expiresAt && new Date(s.expiresAt) < new Date()) &&
+            (s.role === "Aide" || s.role === "Intern")
+        );
+        if (!assignee)
+          return { ok: false, message: "Pick an Aide or Intern to assign this group to." };
+        ownerId = assignee.id;
+        ownerName = assignee.name;
+      }
       const groupId = `cg-${Date.now()}`;
-      const claims = user.role !== "Representative";
       const group = {
         id: groupId,
         title: title.trim(),
         category,
         status: "Open",
-        owner_staff_id: claims ? user.id : null,
+        owner_staff_id: ownerId,
       };
       setCaseGroups((prev) => [...prev, group]);
       setComplaints((prev) =>
@@ -244,17 +204,27 @@ export function YbComplaintsProvider({ children }) {
           if (!eligible.includes(c.id)) return c;
           const history = [
             ...(c.history ?? []),
-            { by: user.id, at: nowIso(), action: "group-assign", detail: `${user.name} opened ${group.title}` },
+            {
+              by: user.id,
+              at: nowIso(),
+              action: "group-assign",
+              detail: isRepresentative
+                ? `${user.name} opened ${group.title} for ${ownerName}`
+                : `${user.name} opened ${group.title}`,
+            },
+            {
+              by: user.id,
+              at: nowIso(),
+              action: "claim",
+              detail: isRepresentative
+                ? `${ownerName} assigned via ${group.title}`
+                : `${user.name} claimed via ${group.title}`,
+            },
           ];
-          if (claims)
-            history.push({ by: user.id, at: nowIso(), action: "claim", detail: `${user.name} claimed via ${group.title}` });
           return {
             ...c,
             case_group_id: groupId,
-            case_group_confirmed: claims,
-            // Claiming moves the complaint straight to In Progress; groups
-            // opened unowned by the Representative stay Pending until claimed.
-            status: claims ? "In Progress" : c.status,
+            status: "In Progress",
             history,
           };
         })
@@ -262,10 +232,10 @@ export function YbComplaintsProvider({ children }) {
       return {
         ok: true,
         groupId,
-        claimed: claims ? eligible.length : 0,
-        message: claims
-          ? `${eligible.length} complaint${eligible.length === 1 ? "" : "s"} claimed under ${group.title}.`
-          : `${group.title} opened with ${eligible.length} complaint${eligible.length === 1 ? "" : "s"}. Representative does not claim.`,
+        claimed: eligible.length,
+        message: isRepresentative
+          ? `${eligible.length} complaint${eligible.length === 1 ? "" : "s"} assigned to ${ownerName} under ${group.title}.`
+          : `${eligible.length} complaint${eligible.length === 1 ? "" : "s"} claimed under ${group.title}.`,
       };
     },
     [complaints]
@@ -275,7 +245,7 @@ export function YbComplaintsProvider({ children }) {
   // (no source group) and assigned (with source group) complaints.
   // Pull model: source ownership is not required; dest must be open and
   // owned by the caller (or Representative). Moved complaint always
-  // becomes In Progress + confirmed, matching Aide/Intern claim behavior.
+  // becomes In Progress under the destination owner.
   const moveToExistingGroup = useCallback(
     (id, destGroupId, user) => {
       const target = complaints.find((x) => x.id === id);
@@ -302,7 +272,6 @@ export function YbComplaintsProvider({ children }) {
         target.id,
         {
           case_group_id: dest.id,
-          case_group_confirmed: true,
           status: "In Progress",
         },
         {
@@ -382,7 +351,6 @@ export function YbComplaintsProvider({ children }) {
           m.id,
           {
             case_group_id: dest.id,
-            case_group_confirmed: true,
             status: "In Progress",
           },
           {
@@ -444,9 +412,6 @@ export function YbComplaintsProvider({ children }) {
       groupOwnerOf,
       touch,
       releaseComplaint,
-      confirmMember,
-      confirmGroup,
-      claimAll,
       createGroupWithSelection,
       moveToExistingGroup,
       moveGroupToGroup,
@@ -460,9 +425,6 @@ export function YbComplaintsProvider({ children }) {
       groupOwnerOf,
       touch,
       releaseComplaint,
-      confirmMember,
-      confirmGroup,
-      claimAll,
       createGroupWithSelection,
       moveToExistingGroup,
       moveGroupToGroup,

@@ -1,5 +1,6 @@
 // Claim popup: confirms a Case Group is opened to claim the complaint and
 // lets staff pull in other pool complaints so they share future updates.
+// Aide/Intern claim for themselves; Representative must assign to an Aide or Intern.
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
@@ -12,12 +13,14 @@ export default function ClaimCaseGroupDialog({
   user,
   canClaim,
   defaultCategory,
+  assignees = [],
   onConfirm,
   onClose,
 }) {
   const dialogRef = useRef(null);
   const [title, setTitle] = useState(() => (seed ? `${seed.category} round · ${seed.locality}` : ""));
   const [category, setCategory] = useState(() => seed?.category ?? defaultCategory ?? "");
+  const [assigneeId, setAssigneeId] = useState("");
   const [extraIds, setExtraIds] = useState([]);
   const [filter, setFilter] = useState("");
   const [formError, setFormError] = useState("");
@@ -54,10 +57,20 @@ export default function ClaimCaseGroupDialog({
       setFormError("Give the case group a title.");
       return;
     }
-    onConfirm({ title: title.trim(), category: category || seed.category, extraIds });
+    if (!canClaim && !assigneeId) {
+      setFormError("Pick an Aide or Intern to assign this group to.");
+      return;
+    }
+    onConfirm({
+      title: title.trim(),
+      category: category || seed.category,
+      extraIds,
+      ...(canClaim ? {} : { ownerStaffId: assigneeId }),
+    });
   };
 
   const total = 1 + extraIds.length;
+  const assigneeName = assignees.find((s) => s.id === assigneeId)?.name ?? null;
 
   return (
     <div
@@ -75,7 +88,7 @@ export default function ClaimCaseGroupDialog({
         <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-4 md:px-5">
           <div>
             <p className="tabular text-xs font-semibold text-accent-ink">
-              Ruj. {formatDisplayRef(seed.id)} · Claimed by {user?.name ?? "staff"}
+              Ruj. {formatDisplayRef(seed.id)} · {canClaim ? `Claimed by ${user?.name ?? "staff"}` : `Assigning to ${assigneeName ?? "an Aide or Intern"}`}
             </p>
             <h2 id="claim-group-title" className="mt-0.5 text-lg font-extrabold text-ink">
               A Case Group is opened to claim this complaint
@@ -83,7 +96,7 @@ export default function ClaimCaseGroupDialog({
             <p className="mt-1 text-sm text-ink-soft">
               {canClaim
                 ? `"${seed.title}" and ${extraIds.length} other${extraIds.length === 1 ? "" : "s"} will be claimed under one group.`
-                : `"${seed.title}" will open a group unassigned. Representative does not claim.`}
+                : `"${seed.title}" and ${extraIds.length} other${extraIds.length === 1 ? "" : "s"} will be assigned${assigneeName ? ` to ${assigneeName}` : ""} under one group.`}
             </p>
           </div>
           <button
@@ -115,6 +128,31 @@ export default function ClaimCaseGroupDialog({
               className={inputClass}
             />
           </div>
+
+          {!canClaim && (
+            <div>
+              <label htmlFor="claim-group-assignee" className={labelClass}>Assign to</label>
+              <select
+                id="claim-group-assignee"
+                value={assigneeId}
+                onChange={(e) => {
+                  setAssigneeId(e.target.value);
+                  setFormError("");
+                }}
+                className={inputClass}
+              >
+                <option value="">Pick an Aide or Intern…</option>
+                {assignees.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} · {s.role}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-ink-soft">
+                The group opens In Progress under this owner.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-ink">
@@ -164,7 +202,7 @@ export default function ClaimCaseGroupDialog({
 
           <div className="flex flex-wrap items-center gap-2">
             <button type="submit" className={primaryButton}>
-              {canClaim ? `Open group and claim ${total}` : `Open group (${total})`}
+              {canClaim ? `Open group and claim ${total}` : `Open group and assign (${total})`}
             </button>
             <button type="button" onClick={onClose} className={textLink}>Cancel</button>
           </div>

@@ -35,9 +35,6 @@ export const ybApi = {
   caseGroups: () => call("/case-groups").then((r) => r.case_groups),
   createCaseGroup: (payload) =>
     call("/case-groups", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.case_group),
-  confirmCaseGroup: (id, complaintIds) =>
-    call(`/case-groups/${id}/confirm`, { method: "POST", body: JSON.stringify({ complaintIds }) }),
-  claimAllCaseGroup: (id) => call(`/case-groups/${id}/claim-all`, { method: "POST" }),
   // Future backend contract for the pull model: adding pool complaints to
   // an existing group, pulling singles between groups, and pulling a whole
   // group into another. Unused by the mock context; kept here so the UI

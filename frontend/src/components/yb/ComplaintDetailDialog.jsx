@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Paperclip, X } from "lucide-react";
 
 import Badge from "../ui/Badge";
-import { inputClass, labelClass, secondaryButton, textLink } from "../ui/styles";
+import { inputClass, labelClass, primaryButton, secondaryButton, textLink } from "../ui/styles";
 import { END_FLOW_REASONS, formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
 import { citizenName } from "../../data/ybCitizens";
 import { staffName } from "../../data/ybStaff";
@@ -35,7 +35,6 @@ export default function ComplaintDetailDialog({
   onReleaseComplaint,
   onTransferToGroup,
   onPullGroup,
-  onConfirmMember,
   onToggleAttention,
   canFlag,
 }) {
@@ -45,7 +44,6 @@ export default function ComplaintDetailDialog({
   const [formError, setFormError] = useState("");
   const [showComposer, setShowComposer] = useState(false);
   const [repeatInGroup, setRepeatInGroup] = useState(true);
-  const [confirmNote, setConfirmNote] = useState("");
   const [showRelease, setShowRelease] = useState(false);
   const [releaseMode, setReleaseMode] = useState("transfer-group");
   const [releaseReason, setReleaseReason] = useState("");
@@ -55,6 +53,9 @@ export default function ComplaintDetailDialog({
   const [groupError, setGroupError] = useState("");
   const [pullGroupDestId, setPullGroupDestId] = useState("");
   const [pullError, setPullError] = useState("");
+  const [claimPath, setClaimPath] = useState(
+    groupCandidates.length > 0 && onTransferToGroup ? "existing" : "new"
+  );
   const [flagError, setFlagError] = useState("");
   const fileInputRef = useRef(null);
 
@@ -75,6 +76,12 @@ export default function ComplaintDetailDialog({
   const ownerId = groupOwnerOf(c);
   const isOwner = !!ownerId && ownerId === user?.id;
   const ownerName = ownerId ? staffName(ownerId) : "Pool";
+  const groupLabel = (g) =>
+    `${g.title} · ${g.memberCount} complaint${g.memberCount === 1 ? "" : "s"} · ${g.ownerName ?? "Unassigned"}`;
+  const selectedDestOwner =
+    groupCandidates.find((g) => g.id === groupDestId)?.ownerName ?? null;
+  const selectedPullOwner =
+    groupCandidates.find((g) => g.id === pullGroupDestId)?.ownerName ?? null;
 
   const submitUpdate = (e) => {
     e.preventDefault();
@@ -253,41 +260,11 @@ export default function ComplaintDetailDialog({
             {c.case_group_id && (
               <>
                 <dt className="font-bold text-ink">Case group</dt>
-                <dd className="text-ink">
-                  {c.case_group_id}{c.case_group_confirmed ? " · confirmed" : " · tentative"}
-                  {!c.case_group_confirmed && (isOwner || isRepresentative) && onConfirmMember && (
-                    <span className="ml-3 inline-flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const ok = onConfirmMember(c.id);
-                          setConfirmNote(ok ? "Membership confirmed." : "Complaint is closed and cannot be confirmed.");
-                        }}
-                        className={textLink}
-                      >
-                        Confirm membership
-                      </button>
-                      {confirmNote && <span className="text-xs text-ink-soft">{confirmNote}</span>}
-                    </span>
-                  )}
-                </dd>
+                <dd className="text-ink">{c.case_group_id}</dd>
               </>
             )}
             <dt className="font-bold text-ink">Owner</dt>
-            <dd className="text-ink">
-              {ownerName}
-              <span className="ml-3 inline-flex flex-wrap gap-2">
-                {!ownerId && poolMode && (
-                  <button onClick={() => onClaim(c.id)} className={textLink}>
-                    {canClaim ? "Claim" : "Open group"}
-                  </button>
-                )}
-              </span>
-              {poolMode && !ownerId && (
-                <span className="mt-1 block text-xs text-ink-soft">
-                  Grouping opens a Case Group. You can add other pool complaints there.
-                </span>
-              )}
-            </dd>
+            <dd className="text-ink">{ownerName}</dd>
             <dt className="font-bold text-ink">Reported</dt>
             <dd className="text-ink">{formatDate(c.date)}</dd>
             <dt className="font-bold text-ink">Updated</dt>
@@ -299,40 +276,109 @@ export default function ComplaintDetailDialog({
               <div className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft">
                 Pending in the pool. Triage happens after claiming, under Assigned Complaints.
               </div>
-              {onTransferToGroup && (
-                <form onSubmit={submitGroupMove} className="space-y-2 rounded-2xl border border-line px-4 py-3">
-                  <h3 className="text-sm font-bold text-ink">Add to existing case group</h3>
-                  {groupCandidates.length === 0 ? (
-                    <p className="text-sm text-ink-soft">
-                      No open groups you own. Claim as a new group instead.
-                    </p>
-                  ) : (
-                    <>
-                      <label htmlFor="dlg-group-dest" className={labelClass}>Case group</label>
-                      <select
-                        id="dlg-group-dest"
-                        value={groupDestId}
-                        onChange={(e) => setGroupDestId(e.target.value)}
-                        className={inputClass}
+              <div className="space-y-3 rounded-2xl border border-line px-4 py-3">
+                <h3 className="text-sm font-bold text-ink">Group this complaint</h3>
+                {onTransferToGroup ? (
+                  <fieldset>
+                    <legend className="sr-only">How to group</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label
+                        className={`flex cursor-pointer items-start gap-2 rounded-2xl border px-3 py-2 hover:bg-canvas ${claimPath === "existing" ? "border-brand" : "border-line"} ${groupCandidates.length === 0 ? "cursor-not-allowed opacity-60" : ""}`}
                       >
-                        <option value="">Pick group…</option>
-                        {groupCandidates.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-ink-soft">
-                        Moves to In Progress under that group owner.
+                        <input
+                          type="radio"
+                          name="claim-path"
+                          value="existing"
+                          checked={claimPath === "existing"}
+                          disabled={groupCandidates.length === 0}
+                          onChange={() => {
+                            setClaimPath("existing");
+                            setGroupError("");
+                          }}
+                          className="mt-1 h-4 w-4 accent-brand"
+                        />
+                        <span className="text-sm">
+                          <span className="block font-bold text-ink">Add to existing group</span>
+                          <span className="block text-xs text-ink-soft">
+                            {groupCandidates.length === 0
+                              ? "No open groups you own."
+                              : "Moves to In Progress under that group owner."}
+                          </span>
+                        </span>
+                      </label>
+                      <label
+                        className={`flex cursor-pointer items-start gap-2 rounded-2xl border px-3 py-2 hover:bg-canvas ${claimPath === "new" ? "border-brand" : "border-line"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="claim-path"
+                          value="new"
+                          checked={claimPath === "new"}
+                          onChange={() => {
+                            setClaimPath("new");
+                            setGroupError("");
+                          }}
+                          className="mt-1 h-4 w-4 accent-brand"
+                        />
+                        <span className="text-sm">
+                          <span className="block font-bold text-ink">Open new group</span>
+                          <span className="block text-xs text-ink-soft">
+                            Start a new case group with this complaint.
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </fieldset>
+                ) : null}
+                {claimPath === "existing" && onTransferToGroup ? (
+                  <form onSubmit={submitGroupMove} className="space-y-2">
+                    {groupCandidates.length === 0 ? (
+                      <p className="text-sm text-ink-soft">
+                        No open groups you own. Open a new group instead.
                       </p>
-                    </>
-                  )}
-                  {groupError && <p role="alert" className="text-sm font-medium text-red-700">{groupError}</p>}
-                  {groupCandidates.length > 0 && (
-                    <button type="submit" className={secondaryButton}>Add to group</button>
-                  )}
-                </form>
-              )}
+                    ) : (
+                      <>
+                        <label htmlFor="dlg-group-dest" className={labelClass}>Case group</label>
+                        <select
+                          id="dlg-group-dest"
+                          value={groupDestId}
+                          onChange={(e) => setGroupDestId(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="">Pick group…</option>
+                          {groupCandidates.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {groupLabel(g)}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-ink-soft">
+                          {selectedDestOwner
+                            ? `Moves to In Progress under ${selectedDestOwner}.`
+                            : "Moves to In Progress under that group owner."}
+                        </p>
+                      </>
+                    )}
+                    {groupError && <p role="alert" className="text-sm font-medium text-red-700">{groupError}</p>}
+                    {groupCandidates.length > 0 && (
+                      <button type="submit" className={secondaryButton}>Add to group</button>
+                    )}
+                  </form>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-ink-soft">
+                      Grouping opens a Case Group. You can add other pool complaints there.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onClaim?.(c.id)}
+                      className={primaryButton}
+                    >
+                      {canClaim ? "Open new group and claim" : "Open new group and assign"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div>
@@ -532,10 +578,15 @@ export default function ComplaintDetailDialog({
                             <option value="">Pick group…</option>
                             {groupCandidates.map((g) => (
                               <option key={g.id} value={g.id}>
-                                {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                                {groupLabel(g)}
                               </option>
                             ))}
                           </select>
+                          {selectedDestOwner && (
+                            <p className="text-xs text-ink-soft">
+                              Moves to In Progress under {selectedDestOwner}.
+                            </p>
+                          )}
                         </>
                       )}
                     </div>
@@ -623,10 +674,15 @@ export default function ComplaintDetailDialog({
                           <option value="">Pick group…</option>
                           {groupCandidates.map((g) => (
                             <option key={g.id} value={g.id}>
-                              {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                              {groupLabel(g)}
                             </option>
                           ))}
                         </select>
+                        {selectedDestOwner && (
+                          <p className="text-xs text-ink-soft">
+                            Pulls into the group owned by {selectedDestOwner}.
+                          </p>
+                        )}
                       </>
                     )}
                     {groupError && <p role="alert" className="text-sm font-medium text-red-700">{groupError}</p>}
@@ -653,10 +709,15 @@ export default function ComplaintDetailDialog({
                             <option value="">Pick group…</option>
                             {groupCandidates.map((g) => (
                               <option key={g.id} value={g.id}>
-                                {g.title} · {g.memberCount} complaint{g.memberCount === 1 ? "" : "s"}
+                                {groupLabel(g)}
                               </option>
                             ))}
                           </select>
+                          {selectedPullOwner && (
+                            <p className="text-xs text-ink-soft">
+                              Pulls into the group owned by {selectedPullOwner}.
+                            </p>
+                          )}
                         </>
                       )}
                       {pullError && <p role="alert" className="text-sm font-medium text-red-700">{pullError}</p>}
