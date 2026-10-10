@@ -25,6 +25,7 @@ export default function AssignedComplaintsPage() {
     releaseComplaint,
     confirmMember,
     addUpdate,
+    setAttention,
   } = useYbComplaints();
   const [status, setStatus] = useState("All");
   const [category, setCategory] = useState("All");
@@ -76,6 +77,15 @@ export default function AssignedComplaintsPage() {
     );
   };
 
+  const onToggleAttention = (id, value) => {
+    const result = setAttention(id, value, user);
+    if (!result?.ok) return result;
+    setAnnouncement(
+      value ? "Flagged for Representative review." : "Representative flag cleared."
+    );
+    return result;
+  };
+
   const clear = () => {
     setStatus("All");
     setCategory("All");
@@ -102,6 +112,12 @@ export default function AssignedComplaintsPage() {
       (s.role === "Aide" || s.role === "Intern") &&
       s.id !== selectedOwnerId
   );
+  const isSelectedOwner = !!selectedOwnerId && selectedOwnerId === user?.id;
+  const canFlagSelected =
+    !!selected &&
+    (selected.needsRepresentativeAttention
+      ? isSelectedOwner || isRepresentative
+      : isSelectedOwner && !isRepresentative);
 
   return (
     <div className="w-full space-y-8">
@@ -240,6 +256,8 @@ export default function AssignedComplaintsPage() {
         releaseCandidates={releaseCandidates}
         canMarkResolved={canMarkResolved}
         onConfirmMember={onConfirmMember}
+        onToggleAttention={onToggleAttention}
+        canFlag={canFlagSelected}
       />
     </div>
   );

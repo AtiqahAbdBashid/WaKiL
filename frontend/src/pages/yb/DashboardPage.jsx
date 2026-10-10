@@ -11,10 +11,10 @@ import { primaryButton, secondaryButton, textLink } from "../../components/ui/st
 import { ybKawasan } from "../../data/ybKawasan";
 import { aduanPins } from "../../data/aduanPins";
 import { ybApi } from "../../lib/ybApi";
-import { ybComplaints } from "../../data/ybSample";
 import { formatDate, formatDisplayRef } from "../../data/ybSample";
-import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
+import { staffName, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
+import { useYbComplaints } from "../../context/YbComplaintsContext";
 import { AduanMixChart, AduanTrendChart } from "../../components/yb/AduanCharts";
 import AduanAging from "../../components/yb/AduanAging";
 import AduanAgingTable from "../../components/yb/AduanAgingTable";
@@ -46,25 +46,21 @@ const isStale = (c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= 
 function MyQueueDashboard({ user }) {
   const firstName = user.name.split(" ")[0];
   const isIntern = user.role === "Intern";
-  // Owner equals worker: a complaint's assignee is its group owner.
-  const ownerOf = (c) =>
-    c.case_group_id
-      ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
-      : null;
-  const mine = useMemo(() => ybComplaints.filter((c) => ownerOf(c) === user.id), [user.id]);
+  const { complaints, groupOwnerOf } = useYbComplaints();
+  const mine = useMemo(() => complaints.filter((c) => groupOwnerOf(c) === user.id), [complaints, user.id, groupOwnerOf]);
   const mineOpen = useMemo(() => mine.filter(isOpen).sort((a, b) => Date.parse(a.date) - Date.parse(b.date)), [mine]);
   const mineStale = useMemo(() => mine.filter(isStale), [mine]);
   const mineFlagged = useMemo(() => mine.filter((c) => c.needsRepresentativeAttention), [mine]);
   const pool = useMemo(
-    () => ybComplaints.filter((c) => !c.case_group_id && c.status === "Pending").sort((a, b) => Date.parse(a.date) - Date.parse(b.date)),
-    []
+    () => complaints.filter((c) => !c.case_group_id && c.status === "Pending").sort((a, b) => Date.parse(a.date) - Date.parse(b.date)),
+    [complaints]
   );
   const activity = useMemo(
     () =>
-      ybComplaints.flatMap((c) => (c.history ?? []).filter((h) => h.by === user.id).map((h) => ({ ...h, ref: c.id, title: c.title })))
+      complaints.flatMap((c) => (c.history ?? []).filter((h) => h.by === user.id).map((h) => ({ ...h, ref: c.id, title: c.title })))
         .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
         .slice(0, 5),
-    [user.id]
+    [complaints, user.id]
   );
   const stats = [
     { label: "My open", value: mineOpen.length, hint: `${mine.filter((c) => c.status === "Pending").length} Pending · ${mine.filter((c) => c.status === "In Progress").length} In Progress` },
@@ -178,22 +174,22 @@ function MyQueueDashboard({ user }) {
 
 function RepresentativeDashboard() {
   const { user } = useYbAuth();
+  const { complaints, groupOwnerOf } = useYbComplaints();
   const key = layoutKey(user?.id);
   // Per-group workload: members share their group's owner as single assignee.
-  const ownerOf = (c) =>
-    c.case_group_id
-      ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
-      : null;
+  const ownerOf = (c) => groupOwnerOf(c);
   const workload = useMemo(
     () =>
       ybStaff.map((s) => ({
         staff: s,
-        total: ybComplaints.filter((c) => ownerOf(c) === s.id).length,
-        open: ybComplaints.filter((c) => ownerOf(c) === s.id && c.status !== "Resolved").length,
+        total: complaints.filter((c) => ownerOf(c) === s.id).length,
+        open: complaints.filter((c) => ownerOf(c) === s.id && c.status !== "Resolved").length,
       })),
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [complaints]
   );
-  const pool = ybComplaints.filter((c) => !c.case_group_id).length;
+  const pool = complaints.filter((c) => !c.case_group_id).length;
+  const totalComplaints = complaints.length;
 
   const [negeri, setNegeri] = useState(null);
   const [mapError, setMapError] = useState(null);
@@ -351,7 +347,7 @@ function RepresentativeDashboard() {
           <tr className="border-t border-line">
             <th scope="row" className="px-4 py-3 text-sm font-extrabold text-ink md:px-5">Total</th>
             <td colSpan={2} className="tabular px-4 py-3 text-right text-2xl font-semibold text-accent-ink md:px-5">
-              {ybComplaints.length}
+              {totalComplaints}
             </td>
           </tr>
         </tfoot>

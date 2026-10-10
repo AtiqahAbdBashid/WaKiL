@@ -1,10 +1,12 @@
 // Attention order: flagged first, then oldest ungrouped Pending, then stalest In Progress (60d+ untouched).
+// Flagged implies In Progress: only claimed complaints can be flagged.
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import Badge from "../ui/Badge";
 import { textLink } from "../ui/styles";
-import { formatDate, formatDisplayRef, ybComplaints } from "../../data/ybSample";
+import { formatDate, formatDisplayRef } from "../../data/ybSample";
+import { useYbComplaints } from "../../context/YbComplaintsContext";
 
 const STALE_DAYS = 60;
 const staleCut = Date.parse("2026-10-03T00:00:00Z") - STALE_DAYS * 86400000;
@@ -20,15 +22,16 @@ function reason(c) {
 const rank = (c) =>
   c.needsRepresentativeAttention ? 0 : c.status === "Pending" && !c.case_group_id ? 1 : 2;
 
-function getAttentionList() {
-  return ybComplaints
+function getAttentionList(complaints) {
+  return complaints
     .filter((c) => c.needsRepresentativeAttention || (c.status === "Pending" && !c.case_group_id) || isStale(c))
     .sort((a, b) => rank(a) - rank(b) || Date.parse(a.date) - Date.parse(b.date));
 }
 
 export default function AttentionList() {
   const [expanded, setExpanded] = useState(false);
-  const items = getAttentionList();
+  const { complaints } = useYbComplaints();
+  const items = getAttentionList(complaints);
   const shown = expanded ? items : items.slice(0, 10);
 
   if (items.length === 0) {

@@ -171,7 +171,7 @@ export function YbComplaintsProvider({ children }) {
           for (const m of openMembers) {
             touch(
               m.id,
-              { status: "Resolved" },
+              { status: "Resolved", needsRepresentativeAttention: false },
               { by: user.id, at: nowIso(), action: "resolve", detail: `Flow ended: ${reason}` }
             );
           }
@@ -190,7 +190,7 @@ export function YbComplaintsProvider({ children }) {
         // End single.
         touch(
           target.id,
-          { status: "Resolved" },
+          { status: "Resolved", needsRepresentativeAttention: false },
           { by: user.id, at: nowIso(), action: "resolve", detail: `Flow ended: ${reason}` }
         );
         if (targetGroup) {
@@ -245,6 +245,44 @@ export function YbComplaintsProvider({ children }) {
       return members.length;
     },
     [complaints, touch]
+  );
+
+  // Representative review flag. Only claimed In Progress complaints can be
+  // flagged; pool Pending stays unflaggable until claimed en-bloc.
+  const setAttention = useCallback(
+    (id, value, user) => {
+      const target = complaints.find((x) => x.id === id);
+      if (!target) return { ok: false, message: "Complaint not found." };
+      if (!isOpenComplaint(target))
+        return { ok: false, message: "Only open complaints can be flagged." };
+      if (target.status !== "In Progress")
+        return { ok: false, message: "Only claimed In Progress complaints can be flagged." };
+      const ownerId = target.case_group_id
+        ? caseGroups.find((g) => g.id === target.case_group_id)?.owner_staff_id ?? null
+        : null;
+      const isOwner = !!ownerId && ownerId === user.id;
+      const isRepresentative = user.role === "Representative";
+      if (value) {
+        if (!isOwner || isRepresentative)
+          return { ok: false, message: "Only the assigned Aide or Intern can flag for Representative review." };
+      } else if (!isOwner && !isRepresentative) {
+        return { ok: false, message: "Only the owner or Representative can clear the flag." };
+      }
+      touch(
+        id,
+        { needsRepresentativeAttention: value },
+        {
+          by: user.id,
+          at: nowIso(),
+          action: value ? "flag" : "unflag",
+          detail: value
+            ? `${user.name} flagged for Representative review`
+            : `${user.name} cleared Representative flag`,
+        }
+      );
+      return { ok: true };
+    },
+    [caseGroups, complaints, touch]
   );
 
   // Group claim en-bloc: claimant becomes group owner; all open members
@@ -369,6 +407,7 @@ export function YbComplaintsProvider({ children }) {
       claimAll,
       createGroupWithSelection,
       addUpdate,
+      setAttention,
     }),
     [
       complaints,
@@ -382,6 +421,7 @@ export function YbComplaintsProvider({ children }) {
       claimAll,
       createGroupWithSelection,
       addUpdate,
+      setAttention,
     ]
   );
 
