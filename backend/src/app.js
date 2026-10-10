@@ -132,7 +132,7 @@ export function createApp(store = createStore()) {
     for (const id of ids) {
       const item = store.getAduan(id);
       if (!item || item.case_group_id !== group.id) return res.status(400).json({ error: `complaint ${id} not in group` });
-      if (item.status === "Resolved" || item.status === "Declined")
+      if (item.status === "Resolved")
         return res.status(400).json({ error: `complaint ${id} closed` });
       store.mutateAduan(id, (a, { audit }) => {
         a.case_group_confirmed = true;
@@ -155,7 +155,7 @@ export function createApp(store = createStore()) {
     const claimed = [];
     for (const id of group.memberIds) {
       const item = store.getAduan(id);
-      if (!item || item.status === "Resolved" || item.status === "Declined") continue;
+      if (!item || item.status === "Resolved") continue;
       store.mutateAduan(id, (a, { audit }) => {
         audit(a, req.user.id, "claim", `${req.user.name} claimed en-bloc via ${group.title}`);
       });
@@ -183,7 +183,7 @@ export function createApp(store = createStore()) {
     store.setCaseGroupOwner(group.id, next);
     for (const id of group.memberIds) {
       const item = store.getAduan(id);
-      if (!item || item.status === "Resolved" || item.status === "Declined") continue;
+      if (!item || item.status === "Resolved") continue;
       store.mutateAduan(id, (a, { audit }) => {
         audit(a, req.user.id, "reassign", `${req.user.name} transferred ${group.title} to ${target.name}`);
       });
