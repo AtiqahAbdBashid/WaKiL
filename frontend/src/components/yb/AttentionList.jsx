@@ -1,7 +1,7 @@
-// Attention order: flagged first, then oldest ungrouped Pending, then stalest In Progress (60d+ untouched).
+// Attention order: flagged first, then stalest In Progress (60d+ untouched).
 // Flagged implies In Progress: only claimed complaints can be flagged.
+// Pending never appears here; pool lives under Complaint Pool.
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 import Badge from "../ui/Badge";
 import { textLink } from "../ui/styles";
@@ -15,16 +15,14 @@ const isStale = (c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= 
 
 function reason(c) {
   if (c.needsRepresentativeAttention) return "Flagged for Representative";
-  if (c.status === "Pending" && !c.case_group_id) return `Ungrouped since ${formatDate(c.date)}`;
   return `Stale since ${formatDate(c.updatedAt)}`;
 }
 
-const rank = (c) =>
-  c.needsRepresentativeAttention ? 0 : c.status === "Pending" && !c.case_group_id ? 1 : 2;
+const rank = (c) => (c.needsRepresentativeAttention ? 0 : 1);
 
 function getAttentionList(complaints) {
   return complaints
-    .filter((c) => c.needsRepresentativeAttention || (c.status === "Pending" && !c.case_group_id) || isStale(c))
+    .filter((c) => c.needsRepresentativeAttention || isStale(c))
     .sort((a, b) => rank(a) - rank(b) || Date.parse(a.date) - Date.parse(b.date));
 }
 
@@ -55,16 +53,13 @@ export default function AttentionList() {
         ))}
       </ul>
       </div>
-      <div className="flex items-center justify-between px-4 py-3 md:px-5">
-        {items.length > 10 ? (
+      {items.length > 10 && (
+        <div className="flex items-center px-4 py-3 md:px-5">
           <button onClick={() => setExpanded((v) => !v)} className={`${textLink} min-h-11 px-2 text-sm`}>
             {expanded ? "Show less" : `Show all ${items.length}`}
           </button>
-        ) : <span />}
-        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          Open pool
-        </Link>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

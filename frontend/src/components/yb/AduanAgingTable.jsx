@@ -1,6 +1,5 @@
 // Aging table: one row per category or staff. Status counts plus open aduans with no update in each window.
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
@@ -115,11 +114,6 @@ export default function AduanAgingTable() {
             </tr>
           </tfoot>
         </table>
-      </div>
-      <div className="flex justify-end px-4 pb-3 md:px-5">
-        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          Open pool
-        </Link>
       </div>
     </Sheet>
   );

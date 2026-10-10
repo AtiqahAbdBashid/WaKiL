@@ -1,6 +1,5 @@
 // Aging view: all aduans grouped by age from created date. Expand bucket for category/staff split.
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 
 import Sheet from "../ui/Sheet";
@@ -39,15 +38,7 @@ export default function AduanAging() {
   const total = ybComplaints.length;
 
   return (
-    <Sheet
-      title="Aduans by aging"
-      className="h-full"
-      action={
-        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          Open pool
-        </Link>
-      }
-    >
+    <Sheet title="Aduans by aging" className="h-full">
       <p className="px-4 pt-3 text-xs text-ink-soft md:px-5">Age from created date · all statuses · as of 3 Oct 2026.</p>
       <ul className="divide-y divide-line">
         {BUCKETS.map((b) => {

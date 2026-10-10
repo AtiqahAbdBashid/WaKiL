@@ -302,15 +302,7 @@ function RepresentativeDashboard() {
   );
 
   const attentionContent = (
-    <Sheet
-      title="Needs attention"
-      className="h-full"
-      action={
-        <Link to="/yb/complaints/pool" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
-          Open pool
-        </Link>
-      }
-    >
+    <Sheet title="Needs attention" className="h-full">
       <Suspense fallback={<p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">Loading attention list…</p>}>
         <AttentionList />
       </Suspense>
