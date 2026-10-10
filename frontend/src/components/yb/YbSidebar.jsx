@@ -2,27 +2,27 @@ import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 
 import { ybNavItems } from '../../data/ybNav'
-import { ybComplaints } from '../../data/ybSample'
+// import { ybComplaints } from '../../data/ybSample'
 import { useYbAuth } from '../../auth/YbAuthContext'
 import SidebarNav from '../dashboard/SidebarNav'
 
-const dotTone = {
-  brand: 'border-brand',
-  accent: 'border-accent',
-  mint: 'border-mint',
-}
+// const dotTone = {
+//   brand: 'border-brand',
+//   accent: 'border-accent',
+//   mint: 'border-mint',
+// }
 
-const tones = ['brand', 'accent', 'mint']
+// const tones = ['brand', 'accent', 'mint']
 
 // Top localities by open complaints, derived from sample data.
-const watchedAreas = [...new Set(ybComplaints.map((c) => c.locality))]
-  .map((name) => ({
-    name,
-    open: ybComplaints.filter((c) => c.locality === name && c.status !== 'Resolved').length,
-  }))
-  .sort((a, b) => b.open - a.open)
-  .slice(0, 3)
-  .map((a, i) => ({ name: a.name, tone: tones[i % tones.length] }))
+// const watchedAreas = [...new Set(ybComplaints.map((c) => c.locality))]
+//   .map((name) => ({
+//     name,
+//     open: ybComplaints.filter((c) => c.locality === name && c.status !== 'Resolved').length,
+//   }))
+//   .sort((a, b) => b.open - a.open)
+//   .slice(0, 3)
+//   .map((a, i) => ({ name: a.name, tone: tones[i % tones.length] }))
 
 export default function YbSidebar() {
   const { user: authUser, canViewStaff } = useYbAuth()
@@ -35,19 +35,19 @@ export default function YbSidebar() {
       tagline="People's Voice, Representative's Mandate"
       user={user}
       items={items}
-      extra={
-        <section aria-label="Watched areas" className="mt-8">
-          <p className="px-3 text-xs font-bold uppercase tracking-widest text-muted">Watched areas</p>
-          <ul className="mt-3 space-y-1">
-            {watchedAreas.map((area) => (
-              <li key={area.name} className="flex items-center gap-3 px-3 py-2 text-[15px] text-ink">
-                <span aria-hidden="true" className={`h-3 w-3 rounded-full border-2 ${dotTone[area.tone]}`} />
-                {area.name}
-              </li>
-            ))}
-          </ul>
-        </section>
-      }
+      // extra={
+      //   <section aria-label="Watched areas" className="mt-8">
+      //     <p className="px-3 text-xs font-bold uppercase tracking-widest text-muted">Watched areas</p>
+      //     <ul className="mt-3 space-y-1">
+      //       {watchedAreas.map((area) => (
+      //         <li key={area.name} className="flex items-center gap-3 px-3 py-2 text-[15px] text-ink">
+      //           <span aria-hidden="true" className={`h-3 w-3 rounded-full border-2 ${dotTone[area.tone]}`} />
+      //           {area.name}
+      //         </li>
+      //       ))}
+      //     </ul>
+      //   </section>
+      // }
       footer={
         <Link
           to="/"
