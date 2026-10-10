@@ -84,6 +84,14 @@ export default function AssignedComplaintsPage() {
         .filter((g) => g.status === "Open" && g.owner_staff_id !== user?.id)
         .sort(sortOpenFirst);
 
+  // Category + search filter at group level: hide groups with zero matching
+  // members (member-based, since backlog groups are "Mixed"). Member rows
+  // inside visible groups are still filtered by `matches` in renderGroupList.
+  const myGroupsFiltered = myGroups.filter((g) => groupMembers(g.id).some(matches));
+  const otherOpenGroupsFiltered = otherOpenGroups.filter((g) =>
+    groupMembers(g.id).some(matches)
+  );
+
   const toggleGroup = (id) =>
     setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -279,7 +287,7 @@ export default function AssignedComplaintsPage() {
       <p role="status" className="sr-only">{announcement}</p>
       {announcement && <p className="text-sm font-bold text-brand">{announcement}</p>}
 
-      <Sheet title={`My case groups · ${myGroups.length}`}>
+      <Sheet title={`My case groups · ${myGroupsFiltered.length}`}>
         {myGroups.length === 0 ? (
           <div className="space-y-3 px-4 py-10 text-center md:px-5">
             <p className="text-base text-ink-soft">No case groups assigned to you yet.</p>
@@ -290,19 +298,29 @@ export default function AssignedComplaintsPage() {
               </Link>
             </div>
           </div>
+        ) : myGroupsFiltered.length === 0 ? (
+          <div className="space-y-3 px-4 py-10 text-center md:px-5">
+            <p className="text-base text-ink-soft">No case groups match these filters.</p>
+            <button onClick={clear} className={textLink}>Clear filters</button>
+          </div>
         ) : (
-          renderGroupList(myGroups)
+          renderGroupList(myGroupsFiltered)
         )}
       </Sheet>
 
       {!isRepresentative && (
-        <Sheet title={`Other open groups · ${otherOpenGroups.length} · read-only`}>
+        <Sheet title={`Other open groups · ${otherOpenGroupsFiltered.length} · read-only`}>
           {otherOpenGroups.length === 0 ? (
             <div className="space-y-3 px-4 py-10 text-center md:px-5">
               <p className="text-base text-ink-soft">No other open groups to pull from.</p>
             </div>
+          ) : otherOpenGroupsFiltered.length === 0 ? (
+            <div className="space-y-3 px-4 py-10 text-center md:px-5">
+              <p className="text-base text-ink-soft">No other groups match these filters.</p>
+              <button onClick={clear} className={textLink}>Clear filters</button>
+            </div>
           ) : (
-            renderGroupList(otherOpenGroups)
+            renderGroupList(otherOpenGroupsFiltered)
           )}
         </Sheet>
       )}
