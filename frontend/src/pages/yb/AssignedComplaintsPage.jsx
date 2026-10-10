@@ -175,7 +175,7 @@ export default function AssignedComplaintsPage() {
               <span className="min-w-0">
                 <span className="block font-bold text-ink">{g.title}</span>
                 <span className="block text-sm text-ink-soft">
-                  {g.category} · {staffName(g.owner_staff_id)} · {members.length} members
+                  {staffName(g.owner_staff_id)} · {members.length} members
                   {tentative > 0 ? ` · ${tentative} tentative` : " · all confirmed"}
                   {g.status === "Closed" ? " · closed" : ""}
                 </span>
@@ -213,7 +213,7 @@ export default function AssignedComplaintsPage() {
                             </button>
                             <p className="text-xs text-ink-soft">
                               <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
-                              {" · "}{c.category} · {c.locality} · {staffName(g.owner_staff_id)}
+                              {" · "}{c.category} · {c.locality}
                               {c.case_group_confirmed ? " · confirmed" : " · tentative"}
                             </p>
                           </div>
