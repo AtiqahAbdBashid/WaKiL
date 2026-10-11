@@ -1,7 +1,5 @@
 // Shared mock grouping state so Assigned Complaints and Complaint Pool see the same data.
-// En-bloc only: assignment lives solely on Case_Group.owner_staff_id (owner
-// equals worker). Pool means no case_group_id; claiming/transfer moves whole
-// groups, never single complaints.
+// En-bloc only: assignment lives on Case_Group.owner_staff_id; pool means no case_group_id.
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { ybComplaints } from "../data/ybSample";
@@ -42,11 +40,8 @@ export function YbComplaintsProvider({ children }) {
     [caseGroups]
   );
 
-  // Resolve-only release. Cross-owner movement happens via pull
-  // (moveToExistingGroup / moveGroupToGroup): the dest-group owner pulls
-  // singles or whole groups into a group they own. Source ownership is
-  // not required; dest must be open and owned by the caller (or
-  // Representative). Owner equals worker for all members.
+  // Resolve-only release. Cross-owner movement uses the pull helpers below:
+  // dest must be open and owned by the caller (or Representative).
   const releaseComplaint = useCallback(
     (id, { mode, reason, repeatInGroup }, user) => {
       const target = complaints.find((x) => x.id === id);
@@ -161,10 +156,8 @@ export function YbComplaintsProvider({ children }) {
     [caseGroups, complaints, touch]
   );
 
-  // Open a case group from pool selection (pool = no case_group_id).
-  // Aide/Intern claim the selection en-bloc; Representative opens the group
-  // already assigned to an Aide or Intern. Joining a group is final and moves
-  // every member straight to In Progress under the group owner.
+  // Open a case group from pool selection. Joining is final: every member
+  // moves to In Progress under the group owner.
   const createGroupWithSelection = useCallback(
     (ids, { title, category, ownerStaffId }, user) => {
       const unique = [...new Set(ids)];
@@ -242,11 +235,8 @@ export function YbComplaintsProvider({ children }) {
     [complaints]
   );
 
-  // Move a complaint into an existing open case group. Works for pool
-  // (no source group) and assigned (with source group) complaints.
-  // Pull model: source ownership is not required; dest must be open and
-  // owned by the caller (or Representative). Moved complaint always
-  // becomes In Progress under the destination owner.
+  // Move a complaint into an existing open case group. Pull model: dest must
+  // be open and owned by the caller (or Representative).
   const moveToExistingGroup = useCallback(
     (id, destGroupId, user) => {
       const target = complaints.find((x) => x.id === id);

@@ -1,4 +1,4 @@
-// App shell: sticky sidebar on desktop, Escape-dismissable drawer on small screens.
+// Sticky sidebar on desktop, Escape-dismissable drawer on small screens.
 import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 
