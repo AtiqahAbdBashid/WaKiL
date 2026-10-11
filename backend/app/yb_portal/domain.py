@@ -9,25 +9,13 @@ become USER.role, and the can_* helpers become application write guards.
 
 from datetime import datetime, timezone
 
-# Lifecycle vocabulary for the COMPLAINT.status CHECK. The legacy map only
-# migrates old seeds; it is not part of the ERD.
+# Lifecycle vocabulary for the COMPLAINT.status CHECK.
 STATUSES = ["Pending", "In Progress", "Resolved"]
-
-LEGACY_STATUS_MAP = {
-    "New": "Pending",
-    "In Review": "In Progress",
-    "In Action": "In Progress",
-    "Resolved": "Resolved",
-}
 
 ROLES = ["Representative", "Aide", "Intern"]
 
 
 # Status guards: keep writes inside the 3-state lifecycle.
-def normalize_status(s: str) -> str:
-    return LEGACY_STATUS_MAP.get(s, s)
-
-
 def is_valid_status(s: str) -> bool:
     return s in STATUSES
 

@@ -207,10 +207,6 @@ class YBPortalStore:
         return copy.deepcopy(item)
 
 
-def create_store() -> YBPortalStore:
-    return YBPortalStore()
-
-
 store = YBPortalStore()
 
 
