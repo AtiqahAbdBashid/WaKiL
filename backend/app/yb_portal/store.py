@@ -174,6 +174,17 @@ class YBPortalStore:
         found = next((a for a in self._aduan if str(a["id"]) == str(aduan_id)), None)
         return copy.deepcopy(found) if found else None
 
+    def mutate_aduan(self, aduan_id, fn) -> dict | None:
+        item = next((a for a in self._aduan if str(a["id"]) == str(aduan_id)), None)
+        if item is None:
+            return None
+
+        def audit(target: dict, by: str, action: str, detail: str) -> None:
+            self._audit(target, by, action, detail)
+
+        fn(item, audit)
+        return copy.deepcopy(item)
+
 
 def create_store() -> YBPortalStore:
     return YBPortalStore()

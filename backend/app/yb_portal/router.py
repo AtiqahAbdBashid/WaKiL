@@ -9,7 +9,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from .domain import ROLES, can_manage_staff, can_view_staff, has_access
+from .domain import (
+    ROLES,
+    can_claim_group,
+    can_manage_staff,
+    can_reassign,
+    can_view_staff,
+    has_access,
+    is_terminal_status,
+)
 from .store import YBPortalStore, get_store
 
 router = APIRouter()
@@ -88,6 +96,135 @@ def get_aduan(aduan_id: str, _: dict = Depends(get_current_staff), store: YBPort
 @router.get("/api/case-groups")
 def list_case_groups(_: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
     return {"case_groups": store.list_case_groups()}
+
+
+# Case groups own assignment: Representative opens groups unowned (never
+# holds work); Aide/Intern create-and-claim en-bloc in one step.
+@router.post("/api/case-groups", status_code=status.HTTP_201_CREATED)
+def create_case_group(
+    payload: dict,
+    user: dict = Depends(get_current_staff),
+    store: YBPortalStore = Depends(get_store),
+):
+    if not can_reassign(user["role"]) and not can_claim_group(user["role"]):
+        raise HTTPException(status_code=403, detail="forbidden")
+    title = (payload or {}).get("title")
+    if not title:
+        raise HTTPException(status_code=400, detail="title required")
+    owner_staff_id = None if user["role"] == "Representative" else user["id"]
+    return {
+        "case_group": store.create_case_group(
+            title=title, category=(payload or {}).get("category"), owner_staff_id=owner_staff_id
+        )
+    }
+
+
+@router.post("/api/case-groups/{group_id}/confirm")
+def confirm_case_group(
+    group_id: str,
+    payload: dict | None = None,
+    user: dict = Depends(get_current_staff),
+    store: YBPortalStore = Depends(get_store),
+):
+    if not can_reassign(user["role"]):
+        raise HTTPException(status_code=403, detail="Representative/Aide only")
+    group = store.get_case_group(group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="not found")
+    body = payload or {}
+    ids = body.get("complaintIds", body.get("complaint_ids", group.get("memberIds", [])))
+    confirmed = []
+    for cid in ids:
+        item = store.get_aduan(cid)
+        if item is None or str(item.get("case_group_id")) != str(group["id"]):
+            raise HTTPException(status_code=400, detail=f"complaint {cid} not in group")
+        if is_terminal_status(item.get("status")):
+            raise HTTPException(status_code=400, detail=f"complaint {cid} closed")
+
+        def _confirm(a, audit, _u=user, _g=group):
+            a["case_group_confirmed"] = True
+            audit(a, _u["id"], "group-confirm", f"{_u['name']} confirmed in {_g['title']}")
+
+        store.mutate_aduan(cid, _confirm)
+        confirmed.append(cid)
+    return {"case_group": store.get_case_group(group["id"]), "confirmed": confirmed}
+
+
+# En-bloc claim: claimant becomes group owner; every open member shares
+# that owner as single assignee. Ungrouped pool complaints are never
+# claimed directly (group first, then claim the group).
+@router.post("/api/case-groups/{group_id}/claim-all")
+def claim_case_group(
+    group_id: str,
+    user: dict = Depends(get_current_staff),
+    store: YBPortalStore = Depends(get_store),
+):
+    if not can_claim_group(user["role"]):
+        raise HTTPException(status_code=403, detail="Aide/Intern only")
+    group = store.get_case_group(group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="not found")
+    if (
+        group.get("owner_staff_id")
+        and group["owner_staff_id"] != user["id"]
+        and not can_reassign(user["role"])
+    ):
+        raise HTTPException(status_code=403, detail="Representative/Aide only")
+    store.set_case_group_owner(group["id"], user["id"])
+    claimed = []
+    for cid in group.get("memberIds", []):
+        item = store.get_aduan(cid)
+        if item is None or is_terminal_status(item.get("status")):
+            continue
+
+        def _claim(a, audit, _u=user, _g=group):
+            audit(a, _u["id"], "claim", f"{_u['name']} claimed en-bloc via {_g['title']}")
+
+        store.mutate_aduan(cid, _claim)
+        claimed.append(cid)
+    return {"case_group": store.get_case_group(group["id"]), "claimed": claimed}
+
+
+# Whole-group transfer (release semantics): owner or Representative/Aide
+# moves the entire group to another Aide/Intern. No per-complaint move.
+@router.patch("/api/case-groups/{group_id}")
+def transfer_case_group(
+    group_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_staff),
+    store: YBPortalStore = Depends(get_store),
+):
+    group = store.get_case_group(group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="not found")
+    nxt = (payload or {}).get("owner_staff_id")
+    if not nxt:
+        raise HTTPException(status_code=400, detail="owner_staff_id required")
+    target = store.get_staff(nxt)
+    if not has_access(target):
+        raise HTTPException(status_code=400, detail="assignee has no access")
+    if target.get("role") == "Representative":
+        raise HTTPException(status_code=400, detail="Representative does not hold groups")
+    if group.get("owner_staff_id") != user["id"] and not can_reassign(user["role"]):
+        raise HTTPException(status_code=403, detail="Representative/Aide only")
+    if group.get("owner_staff_id") == nxt:
+        return {"case_group": store.get_case_group(group["id"])}
+    store.set_case_group_owner(group["id"], nxt)
+    for cid in group.get("memberIds", []):
+        item = store.get_aduan(cid)
+        if item is None or is_terminal_status(item.get("status")):
+            continue
+
+        def _transfer(a, audit, _u=user, _g=group, _t=target):
+            audit(
+                a,
+                _u["id"],
+                "reassign",
+                f"{_u['name']} transferred {_g['title']} to {_t['name']}",
+            )
+
+        store.mutate_aduan(cid, _transfer)
+    return {"case_group": store.get_case_group(group["id"])}
 
 
 @router.get("/api/service-centers")
