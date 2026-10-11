@@ -1,4 +1,4 @@
-"""In-memory YB-portal mock store, ported from backend/src/store.js.
+"""In-memory YB-portal mock store.
 
 Seeded from the same frontend mock data. Swap for a real DB later;
 the route layer only uses the methods below, so persistence can change
@@ -65,7 +65,6 @@ class YBPortalStore:
         self._case_groups: list[dict] = _seed_case_groups()
         self._aduan: list[dict] = copy.deepcopy(SEED_ADUAN)
 
-    # Staff.
     def list_staff(self) -> list[dict]:
         return [copy.deepcopy(s) for s in self._staff]
 
@@ -139,7 +138,6 @@ class YBPortalStore:
                     self._audit(item, by, "release", reason)
             group["owner_staff_id"] = None
 
-    # Read surfaces.
     def get_kawasan(self) -> dict:
         return copy.deepcopy(KAWASAN)
 

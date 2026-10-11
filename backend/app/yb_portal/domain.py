@@ -1,4 +1,4 @@
-"""Canonical YB-portal domain rules, ported from backend/src/domain.js.
+"""Canonical YB-portal domain rules.
 
 Statuses follow the 3-state lifecycle: Pending / In Progress / Resolved.
 Roles stay Representative, Aide, Intern per the glossary.

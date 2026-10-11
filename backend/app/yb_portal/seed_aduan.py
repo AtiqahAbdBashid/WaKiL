@@ -1,4 +1,4 @@
-"""Seeded Complaint pool, ported from backend/src/store.js.
+"""Seeded Complaint pool.
 
 Fictional citizen fixtures; names and addresses are invented demo data.
 """

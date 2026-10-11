@@ -1,10 +1,10 @@
-"""Kawasan geo service, ported from backend/src/kawasan.js.
+"""Kawasan geo service.
 
 Peninsular 2018 delimitation read from the same parquet files the
 citizen intake constituency resolver uses, loaded once and held in
 memory. State view returns every feature of a state; kod lookup
-returns one feature. Point-in-boundary uses the same ray-cast the
-Node backend used so pin flags match exactly.
+returns one feature. Point-in-boundary uses ray-cast so pin flags
+stay exact.
 """
 
 import os
@@ -39,8 +39,7 @@ def load_geo():
 
 
 def _round_coords(coords):
-    # Half-up to 5dp, matching the Node ingest script's Math.round
-    # step so served boundaries match the Node backend exactly.
+    # Half-up to 5dp so served boundaries stay stable.
     if isinstance(coords, bool):
         return coords
     if isinstance(coords, (int, float)):
