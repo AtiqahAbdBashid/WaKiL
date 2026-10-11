@@ -72,6 +72,29 @@ def me(staff: dict = Depends(get_current_staff)):
     return {"user": staff}
 
 
+@router.get("/api/aduan")
+def list_aduan(_: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
+    return {"aduan": store.list_aduan()}
+
+
+@router.get("/api/aduan/{aduan_id}")
+def get_aduan(aduan_id: str, _: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
+    item = store.get_aduan(aduan_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"aduan": item}
+
+
+@router.get("/api/case-groups")
+def list_case_groups(_: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
+    return {"case_groups": store.list_case_groups()}
+
+
+@router.get("/api/service-centers")
+def list_service_centers(_: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
+    return {"service_centers": store.list_service_centers()}
+
+
 @router.get("/api/staff")
 def list_staff(_: dict = Depends(require_viewer), store: YBPortalStore = Depends(get_store)):
     return {"staff": store.list_staff()}

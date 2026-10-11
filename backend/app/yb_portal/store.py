@@ -9,6 +9,8 @@ import copy
 import time
 from datetime import datetime, timezone
 
+from .seed_aduan import SEED_ADUAN
+
 SERVICE_CENTER_ID = "sc-bukit-gasing"
 
 
@@ -52,9 +54,7 @@ class YBPortalStore:
         self._staff: list[dict] = _seed_staff()
         self._service_centers: list[dict] = _seed_service_centers()
         self._case_groups: list[dict] = _seed_case_groups()
-        # Full Complaint seed lands in issue 03 (read surfaces). The list
-        # exists now so expiry/deactivation release paths already work.
-        self._aduan: list[dict] = []
+        self._aduan: list[dict] = copy.deepcopy(SEED_ADUAN)
 
     # Staff.
     def list_staff(self) -> list[dict]:
@@ -130,7 +130,7 @@ class YBPortalStore:
                     self._audit(item, by, "release", reason)
             group["owner_staff_id"] = None
 
-    # Read surface for later issues; seeded then.
+    # Read surfaces.
     def list_service_centers(self) -> list[dict]:
         return copy.deepcopy(self._service_centers)
 
