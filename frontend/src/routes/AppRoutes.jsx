@@ -25,6 +25,8 @@ import StaffPage from '../pages/yb/StaffPage'
 import { YbAuthProvider } from '../auth/YbAuthContext'
 import { YbComplaintsProvider } from '../context/YbComplaintsContext'
 
+// Route table: public landing, citizen portal, and the YB portal. The /yb branch
+// nests every page under shared auth + grouping providers (see YbLayout).
 export default function AppRoutes() {
   return (
     <Routes>

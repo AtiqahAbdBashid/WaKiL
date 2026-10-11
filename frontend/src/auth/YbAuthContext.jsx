@@ -10,6 +10,7 @@ const isExpired = (u) => !!u?.expiresAt && new Date(u.expiresAt) < new Date();
 export function YbAuthProvider({ children }) {
   const [userId, setUserId] = useState("u-representative");
 
+  // Session guard mirrors backend has_access: only active, unexpired staff resolve.
   const user = ybStaff.find((s) => s.id === userId && s.active && !isExpired(s)) ?? null;
 
   const login = useCallback((id) => setUserId(id), []);

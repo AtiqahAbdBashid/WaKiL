@@ -12,6 +12,7 @@ const YbComplaintsContext = createContext(null);
 // Full ISO-8601 timestamp, same convention as the backend writer and seeds.
 const nowIso = () => new Date().toISOString();
 
+// Open means Pending or In Progress; Resolved is the sole terminal status.
 export const isOpenComplaint = (c) => c.status === "Pending" || c.status === "In Progress";
 
 export function YbComplaintsProvider({ children }) {
@@ -375,6 +376,8 @@ export function YbComplaintsProvider({ children }) {
     [caseGroups, complaints, touch]
   );
 
+  // Updates append a history entry; repeatInGroup shares one update across every
+  // open member of the complaint's case group.
   const addUpdate = useCallback(
     (id, { detail, attachmentName, repeatInGroup }, user) => {
       const target = complaints.find((x) => x.id === id);

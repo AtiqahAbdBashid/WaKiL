@@ -1,3 +1,4 @@
+// Sidebar chrome: user identity, nav items with badge/count slots, plus injected extra/footer.
 import { NavLink } from 'react-router-dom'
 
 import Avatar from '../ui/Avatar'

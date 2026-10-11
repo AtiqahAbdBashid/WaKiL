@@ -36,6 +36,7 @@ const AttentionList = lazy(() => import("../../components/yb/AttentionList"));
 export default function DashboardPage() {
   const { user } = useYbAuth();
   if (user?.role === "Aide" || user?.role === "Intern") return <MyQueueDashboard user={user} />;
+  // Remount per user so the per-user persisted layout reloads from localStorage.
   return <RepresentativeDashboard key={user?.id ?? "anon"} />;
 }
 

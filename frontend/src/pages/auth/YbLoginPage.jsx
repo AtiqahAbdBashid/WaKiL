@@ -1,3 +1,5 @@
+// YB sign-in (mock): email form and Google button both land on the dashboard.
+// Real office auth replaces both paths; see the TODO on handleSubmit.
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'

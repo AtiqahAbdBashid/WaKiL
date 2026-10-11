@@ -18,6 +18,7 @@ export const ybServiceCenter = {
   constituency_kod: "N.34",
 };
 
+// Backlog seeds: one open group per staff holding their existing queue.
 export const ybCaseGroups = [
   { id: "cg-lights", title: "Street light cluster Taman Sri Muda", category: "Infrastruktur + Jalan Raya", status: "Open", owner_staff_id: "u-aide" },
   { id: "cg-drainage", title: "Seksyen 31 drainage round", category: "Banjir + Saliran", status: "Open", owner_staff_id: "u-aide2" },

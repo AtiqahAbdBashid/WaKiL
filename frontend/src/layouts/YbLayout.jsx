@@ -1,3 +1,5 @@
+// YB page shell: office sidebar plus the mock-session switcher above each page.
+// Real auth (Google OAuth via backend) replaces the switcher, not the pages.
 import { Outlet } from 'react-router-dom'
 
 import DashboardShell from '../components/dashboard/DashboardShell'

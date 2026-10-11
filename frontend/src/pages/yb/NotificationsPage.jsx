@@ -1,3 +1,5 @@
+// Notifications: read-only feed derived from complaint history (no notification
+// service yet). Morning pool digest plus flag review digest, scoped by role.
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 

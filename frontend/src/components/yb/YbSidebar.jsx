@@ -30,6 +30,7 @@ export default function YbSidebar() {
   const { user: authUser, canViewStaff } = useYbAuth()
   const { complaints, caseGroups } = useYbComplaints()
   const unread = ybUnreadCount(complaints, caseGroups, authUser)
+  // Staff roster link is Representative-only; everyone else sees the rest.
   const base = canViewStaff ? ybNavItems : ybNavItems.filter((item) => item.to !== '/yb/staff')
   const items = base.map((item) =>
     item.to === '/yb/notifications' ? { ...item, count: unread } : item
