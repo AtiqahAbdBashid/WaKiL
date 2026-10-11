@@ -11,12 +11,16 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from .domain import (
     ROLES,
+    STATUSES,
     can_claim_group,
     can_manage_staff,
     can_reassign,
+    can_resolve_owned,
+    can_set_status,
     can_view_staff,
     has_access,
     is_terminal_status,
+    is_valid_status,
 )
 from .store import YBPortalStore, get_store
 
@@ -91,6 +95,63 @@ def get_aduan(aduan_id: str, _: dict = Depends(get_current_staff), store: YBPort
     if item is None:
         raise HTTPException(status_code=404, detail="not found")
     return {"aduan": item}
+
+
+# Triage: per-complaint assignment is gone (owner equals worker via
+# Case_Group.owner_staff_id). PATCH handles status + group membership only;
+# claiming/transfer happens en-bloc at the case-group endpoints below.
+@router.patch("/api/aduan/{aduan_id}")
+def patch_aduan(
+    aduan_id: str,
+    payload: dict | None = None,
+    user: dict = Depends(get_current_staff),
+    store: YBPortalStore = Depends(get_store),
+):
+    item = store.get_aduan(aduan_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="not found")
+    body = payload or {}
+    assignee_id = body.get("assigneeId")
+    status_value = body.get("status")
+    has_group_key = "case_group_id" in body
+    case_group_id = body.get("case_group_id")
+
+    if assignee_id is not None:
+        raise HTTPException(status_code=400, detail="assignment via case group only")
+    if status_value is not None:
+        if not is_valid_status(status_value):
+            raise HTTPException(status_code=400, detail=f"status in {','.join(STATUSES)}")
+        if is_terminal_status(item.get("status")) and status_value != item.get("status"):
+            raise HTTPException(status_code=400, detail="resolved is terminal")
+        if status_value == "Resolved" and status_value != item.get("status"):
+            effective_group_id = case_group_id if has_group_key else item.get("case_group_id")
+            if not effective_group_id:
+                raise HTTPException(status_code=403, detail="pool must be grouped and claimed")
+            group = store.get_case_group(effective_group_id)
+            owner = (group or {}).get("owner_staff_id")
+            if not can_resolve_owned(owner, user["id"]):
+                raise HTTPException(status_code=403, detail="only group owner resolves")
+        elif status_value != item.get("status") and not can_set_status(user["role"], status_value):
+            raise HTTPException(status_code=403, detail="forbidden")
+    if has_group_key and case_group_id is not None and store.get_case_group(case_group_id) is None:
+        raise HTTPException(status_code=400, detail="case group not found")
+
+    old_status = item.get("status")
+
+    def _triage(a, audit, _u=user, _s=status_value, _g=case_group_id, _hg=has_group_key, _from=old_status):
+        if _s is not None and _s != _from:
+            a["status"] = _s
+            audit(a, _u["id"], "status", f"{_from} → {_s}")
+        if _hg:
+            a["case_group_id"] = _g or None
+            a["case_group_confirmed"] = False
+            if _g:
+                audit(a, _u["id"], "group-assign", f"{_u['name']} tentatively added to {_g}")
+            else:
+                audit(a, _u["id"], "group-remove", f"{_u['name']} returned to pool")
+
+    updated = store.mutate_aduan(aduan_id, _triage)
+    return {"aduan": updated}
 
 
 @router.get("/api/case-groups")
