@@ -17,6 +17,8 @@ import { staffName } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 
+const STALE_CUT = Date.parse("2026-10-03T00:00:00Z") - 60 * 86400000;
+
 export default function AssignedComplaintsPage() {
   const { user, canClaim, canMarkResolved } = useYbAuth();
   const {
@@ -38,7 +40,6 @@ export default function AssignedComplaintsPage() {
 
   const isRepresentative = user?.role === "Representative";
 
-  const STALE_CUT = Date.parse("2026-10-03T00:00:00Z") - 60 * 86400000;
   const mine = useMemo(
     () => complaints.filter((c) => isRepresentative || groupOwnerOf(c) === user?.id),
     [complaints, groupOwnerOf, isRepresentative, user?.id]
