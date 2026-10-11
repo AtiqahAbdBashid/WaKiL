@@ -7,7 +7,8 @@ mechanics, and 401/403/404 semantics the frontend already calls.
 import base64
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 
 from .domain import (
     ROLES,
@@ -22,6 +23,7 @@ from .domain import (
     is_terminal_status,
     is_valid_status,
 )
+from .kawasan import feature_contains, kod_feature, negeri_view
 from .store import YBPortalStore, get_store
 
 router = APIRouter()
@@ -286,6 +288,77 @@ def transfer_case_group(
 
         store.mutate_aduan(cid, _transfer)
     return {"case_group": store.get_case_group(group["id"])}
+
+
+@router.get("/api/kawasan")
+def get_kawasan(_: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
+    return {"kawasan": store.get_kawasan()}
+
+
+# Aduan pins: authed, titles staff-only. inside = point in kod boundary.
+# Dun kod repeats per state, so dun + kod requires state.
+@router.get("/api/kawasan/pins")
+def kawasan_pins(
+    level: str = Query(default="parlimen"),
+    state: str | None = Query(default=None),
+    kod: str | None = Query(default=None),
+    _user: dict = Depends(get_current_staff),
+    store: YBPortalStore = Depends(get_store),
+):
+    lvl = str(level or "parlimen").lower()
+    if lvl not in ("parlimen", "dun"):
+        raise HTTPException(status_code=400, detail="level is parlimen|dun")
+    if not kod:
+        raise HTTPException(status_code=400, detail="kod required")
+    if lvl == "dun" and not state:
+        raise HTTPException(status_code=400, detail="dun kod needs state")
+    boundary = kod_feature(lvl, kod, state)
+    if boundary is None:
+        raise HTTPException(status_code=404, detail="kod not found")
+    pins = []
+    for a in store.list_aduan():
+        geo = a.get("lokasi_geojson") or {}
+        if geo.get("type") != "Point":
+            continue
+        lng, lat = geo.get("coordinates", [None, None])
+        pins.append(
+            {
+                "id": a.get("id"),
+                "title": a.get("title"),
+                "status": a.get("status"),
+                "lng": lng,
+                "lat": lat,
+                "inside": feature_contains(boundary, lng, lat),
+            }
+        )
+    return {"pins": pins}
+
+
+# Kawasan geo: public CC0 boundary data, no session needed.
+# Parlimen kod is nationally unique; dun kod repeats per state, so
+# dun + kod requires state to disambiguate.
+@router.get("/api/kawasan/geojson")
+def kawasan_geojson(
+    level: str = Query(default="parlimen"),
+    state: str | None = Query(default=None),
+    kod: str | None = Query(default=None),
+):
+    lvl = str(level or "parlimen").lower()
+    if lvl not in ("parlimen", "dun"):
+        raise HTTPException(status_code=400, detail="level is parlimen|dun")
+    if not state and not kod:
+        raise HTTPException(status_code=400, detail="pass state and/or kod")
+    if kod:
+        if lvl == "dun" and not state:
+            raise HTTPException(status_code=400, detail="dun kod needs state")
+        feat = kod_feature(lvl, kod, state)
+        if feat is None:
+            raise HTTPException(status_code=404, detail="kod not found")
+        return JSONResponse(content=feat, headers={"cache-control": "public, max-age=86400"})
+    fc = negeri_view(lvl, state)
+    if not fc or not fc["features"]:
+        raise HTTPException(status_code=404, detail="state not found")
+    return JSONResponse(content=fc, headers={"cache-control": "public, max-age=86400"})
 
 
 @router.get("/api/service-centers")

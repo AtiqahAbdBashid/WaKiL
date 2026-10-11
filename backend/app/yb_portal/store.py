@@ -13,6 +13,15 @@ from .seed_aduan import SEED_ADUAN
 
 SERVICE_CENTER_ID = "sc-bukit-gasing"
 
+KAWASAN = {
+    "level": "dun",
+    "kod": "N.34",
+    "name": "Bukit Gasing",
+    "state": "Selangor",
+    "dun": "N.34 Bukit Gasing",
+    "geojsonRef": "peninsular_2018_dun.geojson",
+}
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -131,6 +140,9 @@ class YBPortalStore:
             group["owner_staff_id"] = None
 
     # Read surfaces.
+    def get_kawasan(self) -> dict:
+        return copy.deepcopy(KAWASAN)
+
     def list_service_centers(self) -> list[dict]:
         return copy.deepcopy(self._service_centers)
 
