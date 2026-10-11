@@ -3,6 +3,11 @@
 Seeded from the same frontend mock data. Swap for a real DB later;
 the route layer only uses the methods below, so persistence can change
 without touching permissions or status logic.
+
+ERD v3: staff seeds become USER rows, the office becomes SERVICE_CENTER,
+groups become CASE_GROUP rows (free-text category becomes the CATEGORY
+lookup), the pool becomes COMPLAINT rows, and embedded history entries
+become COMPLAINT_UPDATE rows.
 """
 
 import copy
@@ -11,6 +16,7 @@ from datetime import datetime, timezone
 
 from .seed_aduan import SEED_ADUAN
 
+# Mock office scope: one SERVICE_CENTER inside one CONSTITUENCY.
 SERVICE_CENTER_ID = "sc-bukit-gasing"
 
 KAWASAN = {
@@ -57,7 +63,11 @@ def _seed_case_groups() -> list[dict]:
 
 
 class YBPortalStore:
-    """Single-owner store. Assignment lives solely on case-group ownership."""
+    """Single-owner store. Assignment lives solely on case-group ownership.
+
+    Merge path: these dicts become shared-model rows and ownership becomes
+    CASE_GROUP.owner_staff_id.
+    """
 
     def __init__(self) -> None:
         self._staff: list[dict] = _seed_staff()
@@ -184,6 +194,7 @@ class YBPortalStore:
         found = next((a for a in self._aduan if str(a["id"]) == str(aduan_id)), None)
         return copy.deepcopy(found) if found else None
 
+    # Mutate through a callback, then return a copy so callers never alias store state.
     def mutate_aduan(self, aduan_id, fn) -> dict | None:
         item = next((a for a in self._aduan if str(a["id"]) == str(aduan_id)), None)
         if item is None:

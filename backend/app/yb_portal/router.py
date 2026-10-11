@@ -2,6 +2,11 @@
 
 Same /api/* paths, response shapes ({staff}, {user}), Bearer token
 mechanics, and 401/403/404 semantics the frontend already calls.
+
+ERD v3: auth reads USER; /api/aduan writes COMPLAINT and COMPLAINT_UPDATE;
+/api/case-groups writes CASE_GROUP and assigns COMPLAINT.case_group_id;
+/api/kawasan reads CONSTITUENCY; /api/staff and /api/service-centers
+manage USER and SERVICE_CENTER.
 """
 
 import base64
@@ -69,6 +74,8 @@ def health():
     return {"ok": True}
 
 
+# Staff login: find the USER row by email, then mint a stand-in token.
+# Real OAuth/OpenID verification comes later (ADR-0003).
 @router.post("/api/auth/google")
 def google_login(payload: dict, store: YBPortalStore = Depends(get_store)):
     lookup = (payload or {}).get("email") or (payload or {}).get("idToken")
@@ -99,9 +106,8 @@ def get_aduan(aduan_id: str, _: dict = Depends(get_current_staff), store: YBPort
     return {"aduan": item}
 
 
-# Triage: per-complaint assignment is gone (owner equals worker via
-# Case_Group.owner_staff_id). PATCH handles status + group membership only;
-# claiming/transfer happens en-bloc at the case-group endpoints below.
+# Triage: no per-complaint assignment (owner equals worker via
+# CASE_GROUP.owner_staff_id); PATCH handles status and group membership only.
 @router.patch("/api/aduan/{aduan_id}")
 def patch_aduan(
     aduan_id: str,
@@ -213,9 +219,8 @@ def confirm_case_group(
     return {"case_group": store.get_case_group(group["id"]), "confirmed": confirmed}
 
 
-# En-bloc claim: claimant becomes group owner; every open member shares
-# that owner as single assignee. Ungrouped pool complaints are never
-# claimed directly (group first, then claim the group).
+# En-bloc claim: claimant becomes group owner of every open member.
+# Pool complaints are never claimed directly; group first, then claim.
 @router.post("/api/case-groups/{group_id}/claim-all")
 def claim_case_group(
     group_id: str,
@@ -361,6 +366,7 @@ def kawasan_geojson(
     return JSONResponse(content=fc, headers={"cache-control": "public, max-age=86400"})
 
 
+# Office and staff admin: SERVICE_CENTER rows plus staff-only USER rows.
 @router.get("/api/service-centers")
 def list_service_centers(_: dict = Depends(get_current_staff), store: YBPortalStore = Depends(get_store)):
     return {"service_centers": store.list_service_centers()}

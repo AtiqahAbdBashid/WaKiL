@@ -5,6 +5,9 @@ citizen intake constituency resolver uses, loaded once and held in
 memory. State view returns every feature of a state; kod lookup
 returns one feature. Point-in-boundary uses ray-cast so pin flags
 stay exact.
+
+Read-only support for ERD v3 CONSTITUENCY rows and the pins inside them;
+nothing here is persisted.
 """
 
 import os
@@ -12,6 +15,7 @@ import re
 from math import floor
 
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+# 2018 delimitation parquet behind the constituency lookup (CONSTITUENCY.geojsonRef).
 FILES = {
     "parlimen": os.path.join(DATA_DIR, "peninsular_2018_parlimen.parquet"),
     "dun": os.path.join(DATA_DIR, "peninsular_2018_dun.parquet"),

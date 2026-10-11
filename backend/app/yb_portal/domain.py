@@ -2,10 +2,15 @@
 
 Statuses follow the 3-state lifecycle: Pending / In Progress / Resolved.
 Roles stay Representative, Aide, Intern per the glossary.
+
+ERD v3: the status vocabulary becomes the COMPLAINT.status CHECK, roles
+become USER.role, and the can_* helpers become application write guards.
 """
 
 from datetime import datetime, timezone
 
+# Lifecycle vocabulary for the COMPLAINT.status CHECK. The legacy map only
+# migrates old seeds; it is not part of the ERD.
 STATUSES = ["Pending", "In Progress", "Resolved"]
 
 LEGACY_STATUS_MAP = {
@@ -18,6 +23,7 @@ LEGACY_STATUS_MAP = {
 ROLES = ["Representative", "Aide", "Intern"]
 
 
+# Status guards: keep writes inside the 3-state lifecycle.
 def normalize_status(s: str) -> str:
     return LEGACY_STATUS_MAP.get(s, s)
 
@@ -30,6 +36,8 @@ def is_terminal_status(status: str) -> bool:
     return status == "Resolved"
 
 
+# Session guards: expired or deactivated staff lose access; their groups
+# return to the pool.
 def _parse_expiry(expires_at) -> datetime | None:
     if not expires_at:
         return None
@@ -59,6 +67,7 @@ def has_access(staff: dict | None, now: datetime | None = None) -> bool:
     return bool(staff) and bool(staff.get("active")) and not is_expired(staff, now)
 
 
+# Triage permissions: who may change status, claim, resolve, manage staff.
 def can_set_status(role: str, status: str) -> bool:
     if not is_valid_status(status):
         return False
