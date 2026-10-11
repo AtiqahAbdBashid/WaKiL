@@ -42,9 +42,12 @@ from app.services.chat_store import (
 )
 from app.services.complaint_store import create_complaint, get_complaint_by_session
 from app.services.constituency import resolve_constituency
+from app.yb_portal.router import router as yb_portal_router
 
 
 app = FastAPI()
+
+app.include_router(yb_portal_router)
 
 app.add_middleware(
     CORSMiddleware,
