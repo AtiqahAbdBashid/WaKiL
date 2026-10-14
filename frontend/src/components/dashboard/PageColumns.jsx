@@ -1,3 +1,4 @@
+// Page body: optional rail docks right on xl screens.
 export default function PageColumns({ rail, children }) {
   return (
     <div className="flex flex-1 flex-col xl:flex-row">

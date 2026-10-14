@@ -3,21 +3,19 @@ import {
   Bell,
   Inbox,
   LayoutGrid,
-  Map,
-  MessageSquare,
-  Monitor,
   Settings,
-  Sparkles,
+  UserCheck,
+  Users,
 } from 'lucide-react'
 
 export const ybNavItems = [
   { label: 'Dashboard', to: '/yb/dashboard', icon: LayoutGrid },
-  { label: 'Complaints', to: '/yb/complaints', icon: Inbox },
-  { label: 'Facebook Monitor', to: '/yb/facebook-monitor', icon: MessageSquare },
-  { label: 'AI Insights', to: '/yb/ai-insights', icon: Sparkles },
+  { label: 'Assigned Complaints', to: '/yb/complaints/assigned', icon: UserCheck },
+  { label: 'Complaint Pool', to: '/yb/complaints/pool', icon: Inbox },
+  // Users glyph marks the staff roster; `to` matches the SidebarNav link contract.
+  { label: 'Staff', to: '/yb/staff', icon: Users },
   { label: 'Analytics', to: '/yb/analytics', icon: BarChart3 },
-  { label: 'Map', to: '/yb/map', icon: Map },
-  { label: 'WaKiL AI', to: '/yb/ai', icon: Monitor },
-  { label: 'Notifications', to: '/yb/notifications', icon: Bell, count: 3 },
+  // Count is derived in YbSidebar via ybUnreadCount; keep 0 as fallback.
+  { label: 'Notifications', to: '/yb/notifications', icon: Bell, count: 0 },
   { label: 'Settings', to: '/yb/settings', icon: Settings },
 ]

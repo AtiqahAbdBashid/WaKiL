@@ -2,34 +2,28 @@ import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 
 import { ybNavItems } from '../../data/ybNav'
-import { watchedAreas, ybUser } from '../../data/ybMock'
+import { ybUnreadCount } from '../../data/ybNotifications'
+import { useYbAuth } from '../../auth/YbAuthContext'
+import { useYbComplaints } from '../../context/YbComplaintsContext'
 import SidebarNav from '../dashboard/SidebarNav'
 
-const dotTone = {
-  brand: 'border-brand',
-  accent: 'border-accent',
-  mint: 'border-mint',
-}
-
 export default function YbSidebar() {
+  const { user: authUser, canViewStaff } = useYbAuth()
+  const { complaints, caseGroups } = useYbComplaints()
+  const unread = ybUnreadCount(complaints, caseGroups, authUser)
+  // Staff roster link is Representative-only; everyone else sees the rest.
+  const base = canViewStaff ? ybNavItems : ybNavItems.filter((item) => item.to !== '/yb/staff')
+  const items = base.map((item) =>
+    item.to === '/yb/notifications' ? { ...item, count: unread } : item
+  )
+  const user = authUser
+    ? { name: authUser.name, initials: authUser.initials, role: authUser.role }
+    : { name: 'Service Officer', initials: 'SO', role: 'YB Office' }
   return (
     <SidebarNav
       tagline="People's Voice, Representative's Mandate"
-      user={ybUser}
-      items={ybNavItems}
-      extra={
-        <section aria-label="Watched areas" className="mt-8">
-          <p className="px-3 text-xs font-bold uppercase tracking-widest text-muted">Watched areas</p>
-          <ul className="mt-3 space-y-1">
-            {watchedAreas.map((area) => (
-              <li key={area.name} className="flex items-center gap-3 px-3 py-2 text-[15px] text-ink">
-                <span aria-hidden="true" className={`h-3 w-3 rounded-full border-2 ${dotTone[area.tone]}`} />
-                {area.name}
-              </li>
-            ))}
-          </ul>
-        </section>
-      }
+      user={user}
+      items={items}
       footer={
         <Link
           to="/"

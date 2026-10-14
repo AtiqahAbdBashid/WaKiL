@@ -15,16 +15,18 @@ import ProfilePage from '../pages/citizen/ProfilePage'
 import SubmitComplaintPage from '../pages/citizen/SubmitComplaintPage'
 import CitizenWakilAIPage from '../pages/citizen/WakilAIPage'
 
-import AIInsightsPage from '../pages/yb/AIInsightsPage'
 import AnalyticsPage from '../pages/yb/AnalyticsPage'
-import ComplaintsPage from '../pages/yb/ComplaintsPage'
+import AssignedComplaintsPage from '../pages/yb/AssignedComplaintsPage'
+import ComplaintPoolPage from '../pages/yb/ComplaintPoolPage'
 import YbDashboardPage from '../pages/yb/DashboardPage'
-import FacebookMonitorPage from '../pages/yb/FacebookMonitorPage'
-import MapPage from '../pages/yb/MapPage'
 import YbNotificationsPage from '../pages/yb/NotificationsPage'
 import SettingsPage from '../pages/yb/SettingsPage'
-import WakilAIPage from '../pages/yb/WakilAIPage'
+import StaffPage from '../pages/yb/StaffPage'
+import { YbAuthProvider } from '../auth/YbAuthContext'
+import { YbComplaintsProvider } from '../context/YbComplaintsContext'
 
+// Route table: public landing, citizen portal, and the YB portal. The /yb branch
+// nests every page under shared auth + grouping providers (see YbLayout).
 export default function AppRoutes() {
   return (
     <Routes>
@@ -45,15 +47,14 @@ export default function AppRoutes() {
         <Route path="profil" element={<ProfilePage />} />
       </Route>
 
-      <Route path="yb" element={<YbLayout />}>
+      <Route path="yb" element={<YbAuthProvider><YbComplaintsProvider><YbLayout /></YbComplaintsProvider></YbAuthProvider>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<YbDashboardPage />} />
-        <Route path="complaints" element={<ComplaintsPage />} />
-        <Route path="facebook-monitor" element={<FacebookMonitorPage />} />
-        <Route path="ai-insights" element={<AIInsightsPage />} />
+        <Route path="complaints" element={<Navigate to="complaints/pool" replace />} />
+        <Route path="complaints/assigned" element={<AssignedComplaintsPage />} />
+        <Route path="complaints/pool" element={<ComplaintPoolPage />} />
+        <Route path="staff" element={<StaffPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="map" element={<MapPage />} />
-        <Route path="ai" element={<WakilAIPage />} />
         <Route path="notifications" element={<YbNotificationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

@@ -3,7 +3,13 @@ import { ShieldCheck } from 'lucide-react'
 import CountUp from '../ui/CountUp'
 import Reveal from '../ui/Reveal'
 import SectionHeader from './SectionHeader'
-import { categoryBars } from '../../data/ybMock'
+
+const categoryBars = {
+  Roads: 'bg-brand',
+  'Street lights': 'bg-accent',
+  Drainage: 'bg-violet',
+  Rubbish: 'bg-mint',
+}
 import { pilotStats, transparencyPoints } from '../../data/landingContent'
 
 const percent = (part, whole) => Math.round((part / whole) * 100)

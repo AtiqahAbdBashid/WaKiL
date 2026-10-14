@@ -1,3 +1,5 @@
+// YB sign-in (mock): email form and Google button both land on the dashboard.
+// Real office auth replaces both paths; see the TODO on handleSubmit.
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
@@ -68,6 +70,14 @@ export default function YbLoginPage() {
         <Button type="submit" size="lg" className="mt-6 w-full">
           Sign in <ArrowRight className="h-5 w-5" aria-hidden="true" />
         </Button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/yb/dashboard')}
+          className="mt-3 w-full rounded-2xl border border-line bg-white py-3 text-sm font-bold text-ink hover:bg-canvas"
+        >
+          Continue with Google (mock)
+        </button>
 
         <div className="mt-6 space-y-3 border-t border-line pt-6 text-sm text-muted">
           <p className="flex items-start gap-2">
