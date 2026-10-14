@@ -7,7 +7,6 @@ const variants = {
   landing: {
     showLogin: true,
     chat: true,
-    footer: 'plain',
     photo: true,
     blobs: [],
   },
@@ -39,6 +38,7 @@ function pickVariant(pathname) {
 }
 
 function Footer({ mode }) {
+  if (!mode) return null
   if (mode === 'centered') {
     return (
       <footer className="relative z-10 py-8 text-center text-sm text-muted">

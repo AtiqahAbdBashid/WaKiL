@@ -1,6 +1,5 @@
 import { ShieldCheck } from 'lucide-react'
 
-import Badge from '../ui/Badge'
 import CountUp from '../ui/CountUp'
 import Reveal from '../ui/Reveal'
 import SectionHeader from './SectionHeader'
@@ -24,14 +23,12 @@ export default function StatsSection() {
     <section
       id="statistics"
       aria-labelledby="statistics-title"
-      className="border-y border-line bg-white px-4 py-20 sm:px-6 lg:py-28"
+      className="flex min-h-[calc(100svh-6rem)] flex-col justify-center border-y border-line bg-white px-4 py-20 sm:px-6 lg:py-28"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto w-full max-w-6xl">
         <SectionHeader
           id="statistics-title"
-          eyebrow="Statistics & transparency"
           title="Open numbers, private people"
-          badge={<Badge tone="neutral">Pilot · sample data</Badge>}
         >
           What WaKiL reports publicly is aggregated. The figures below are sample data for the pilot, not real
           complaints.

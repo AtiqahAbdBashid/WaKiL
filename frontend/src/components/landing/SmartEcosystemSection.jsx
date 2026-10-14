@@ -7,36 +7,35 @@ export default function SmartEcosystemSection() {
     <section
       id="smart-ecosystem"
       aria-labelledby="smart-ecosystem-title"
-      className="px-4 pb-20 pt-14 sm:px-6 lg:pb-28 lg:pt-16"
+      className="flex min-h-[calc(100svh-6rem)] flex-col justify-center px-4 pb-20 pt-14 sm:px-6 lg:pb-28 lg:pt-16"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto w-full max-w-6xl">
         <SectionHeader
           id="smart-ecosystem-title"
-          eyebrow="Smart ecosystem"
           title="Everything you need, from report to result"
           scrim
         >
           Report a problem, follow it as it moves, and hear back, all in one place.
         </SectionHeader>
+      </div>
 
-        <ul className="mt-12 grid gap-5 sm:grid-cols-2">
-          {ecosystemFeatures.map(({ icon: Icon, title, text }, i) => (
-            <Reveal
-              as="li"
-              key={title}
-              delay={(i % 2) * 90}
-              className="lift rounded-3xl border border-line bg-white p-6 shadow-card"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
-                <Icon className="h-6 w-6" aria-hidden="true" />
-              </span>
-              <h3 className="mt-5 text-xl font-bold text-ink">{title}</h3>
-              <p className="mt-2 leading-relaxed text-muted">{text}</p>
-            </Reveal>
-          ))}
-        </ul>
+      <ul className="mx-auto mt-20 grid w-full lg:mt-28 max-w-[88rem] gap-x-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-x-14 xl:gap-x-20">
+        {ecosystemFeatures.map(({ icon: Icon, title, text }, i) => (
+          <Reveal
+            as="li"
+            key={title}
+            delay={i * 90}
+            className="row-span-3 grid grid-rows-subgrid justify-items-center pb-14 text-center last:pb-0 sm:[&:nth-last-child(2)]:pb-0 lg:pb-0"
+          >
+            <Icon className="h-10 w-10 text-brand" aria-hidden="true" />
+            <h3 className="mt-6 text-xl font-bold text-ink">{title}</h3>
+            <p className="mt-3 leading-relaxed text-muted">{text}</p>
+          </Reveal>
+        ))}
+      </ul>
 
-        <Reveal className="mt-14 rounded-3xl bg-brand p-8 text-white shadow-glow-brand sm:p-10">
+      <div className="mx-auto w-full max-w-6xl">
+        <Reveal className="mt-24 rounded-3xl bg-brand lg:mt-32 p-8 text-white shadow-glow-brand sm:p-10">
           <h3 className="text-2xl font-extrabold">From report to resolution</h3>
           <ol className="mt-8 grid gap-8 md:grid-cols-3">
             {ecosystemSteps.map(({ icon: Icon, title, text }, i) => (

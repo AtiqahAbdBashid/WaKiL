@@ -46,7 +46,7 @@ export const pilotStats = {
   received: 128,
   resolved: 74,
   avgFirstResponseDays: 2.4,
-  pilotAreas: 2,
+  pilotAreas: 1,
   categories: [
     { name: 'Roads', count: 47 },
     { name: 'Street lights', count: 31 },
@@ -79,7 +79,4 @@ export const aboutValues = [
   },
 ]
 
-export const pilotAreas = [
-  { code: 'P121', name: 'Lembah Pantai' },
-  { code: 'P130', name: 'Raub' },
-]
+export const pilotAreas = [{ code: 'N34', name: 'Bukit Gasing' }]
