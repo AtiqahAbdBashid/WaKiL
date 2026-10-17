@@ -1,15 +1,14 @@
 // Analytics: Charts tab (mix, trend, aging) and Map tab (Kawasan boundary with pins).
 // Map section keeps the former standalone map view; charts reuse the dashboard widgets.
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MapPin } from "lucide-react";
 
 import Badge from "../../components/ui/Badge";
 import PageTitle from "../../components/ui/PageTitle";
 import Sheet from "../../components/ui/Sheet";
-import { formatDate, formatDisplayRef, ybComplaints } from "../../data/ybSample";
-import { ybKawasan } from "../../data/ybKawasan";
-import { aduanPins } from "../../data/aduanPins";
+import { formatDate, formatDisplayRef } from "../../data/ybSample";
+import { useYbComplaints } from "../../context/YbComplaintsContext";
 import { ybApi } from "../../lib/ybApi";
 import { AduanMixChart, AduanTrendChart } from "../../components/yb/AduanCharts";
 import AduanAging from "../../components/yb/AduanAging";
@@ -17,16 +16,14 @@ import AduanAgingTable from "../../components/yb/AduanAgingTable";
 
 const KawasanMap = lazy(() => import("../../components/yb/KawasanMap"));
 
-const LEVELS = [
-  { level: "dun", kod: ybKawasan.kod, codeKey: "code_dun" },
-];
-
-const areas = [...new Set(ybComplaints.map((c) => c.locality))]
-  .map((locality) => {
-    const items = ybComplaints.filter((c) => c.locality === locality);
-    return { area: locality, items, open: items.filter((c) => c.status !== "Resolved").length };
-  })
-  .sort((a, b) => b.open - a.open);
+// Complaints have no locality column yet, so the area list stays empty until one exists.
+const groupByArea = (complaints) =>
+  [...new Set(complaints.map((c) => c.locality).filter(Boolean))]
+    .map((locality) => {
+      const items = complaints.filter((c) => c.locality === locality);
+      return { area: locality, items, open: items.filter((c) => c.status !== "Resolved").length };
+    })
+    .sort((a, b) => b.open - a.open);
 
 const TABS = [
   { id: "charts", label: "Charts" },
@@ -82,20 +79,23 @@ export default function AnalyticsPage() {
 }
 
 function MapSection() {
-  const [selected, setSelected] = useState(areas[0]?.area ?? "");
+  const { complaints, kawasan } = useYbComplaints();
+  const areas = useMemo(() => groupByArea(complaints), [complaints]);
+  const [selected, setSelected] = useState("");
   const [level, setLevel] = useState("dun");
+  const LEVELS = useMemo(() => [{ level: "dun", kod: kawasan?.kod, codeKey: "code_dun" }], [kawasan]);
   const [geo, setGeo] = useState({});
   const [pinsByLevel, setPinsByLevel] = useState({});
-  const current = areas.find((a) => a.area === selected);
+  const current = areas.find((a) => a.area === (selected || areas[0]?.area));
   const cfg = LEVELS.find((l) => l.level === level);
   const negeri = geo[level]?.fc ?? null;
   const mapError = geo[level]?.error ?? null;
 
   useEffect(() => {
-    if (geo[level]) return;
+    if (!kawasan || geo[level]) return;
     let live = true;
     ybApi
-      .kawasanGeojson({ level, state: ybKawasan.state })
+      .kawasanGeojson({ level, state: kawasan.state })
       .then((fc) => {
         if (live) setGeo((g) => ({ ...g, [level]: { fc } }));
       })
@@ -105,31 +105,31 @@ function MapSection() {
     return () => {
       live = false;
     };
-  }, [level, geo]);
+  }, [level, geo, kawasan]);
 
   useEffect(() => {
-    if (pinsByLevel[level]) return;
+    if (!kawasan || pinsByLevel[level]) return;
     let live = true;
     const levelCfg = LEVELS.find((l) => l.level === level);
     ybApi
-      .pins({ level, state: ybKawasan.state, kod: levelCfg.kod })
+      .pins({ level, state: kawasan.state, kod: levelCfg.kod })
       .then((p) => {
-        if (live && p?.length) setPinsByLevel((m) => ({ ...m, [level]: p }));
+        if (live) setPinsByLevel((m) => ({ ...m, [level]: p }));
       })
       .catch(() => {
-        if (live) setPinsByLevel((m) => ({ ...m, [level]: aduanPins }));
+        if (live) setPinsByLevel((m) => ({ ...m, [level]: [] }));
       });
     return () => {
       live = false;
     };
-  }, [level, pinsByLevel]);
+  }, [level, pinsByLevel, kawasan, LEVELS]);
 
   return (
     <div className="w-full space-y-8">
-      <p className="text-base text-ink-soft">{`${ybKawasan.state} with ${ybKawasan.kod} ${ybKawasan.name} highlighted.`}</p>
+      <p className="text-base text-ink-soft">{kawasan ? `${kawasan.state} with ${kawasan.kod} ${kawasan.name} highlighted.` : ""}</p>
 
       <Sheet
-        title={`${cfg.kod} boundary`}
+        title={`${cfg?.kod} boundary`}
         action={
           <div className="flex gap-1" role="group" aria-label="Boundary level">
             {LEVELS.map((l) => (
@@ -155,10 +155,10 @@ function MapSection() {
           ) : (
             <>
               <Suspense fallback={<p className="py-10 text-center text-sm text-ink-soft">Loading map…</p>}>
-                <KawasanMap negeri={negeri} highlightKod={cfg.kod} codeKey={cfg.codeKey} label={cfg.kod} pins={pinsByLevel[level] ?? aduanPins} />
+                <KawasanMap negeri={negeri} highlightKod={cfg?.kod} codeKey={cfg.codeKey} label={cfg?.kod} pins={pinsByLevel[level] ?? []} />
               </Suspense>
               <p className="mt-2 text-sm text-ink-soft">
-                Level: {level} · {negeri.features.length} boundaries · {ybKawasan.dun} · Peninsular 2018
+                Level: {level} · {negeri.features.length} boundaries · {kawasan?.dun} · Peninsular 2018
               </p>
             </>
           )}
@@ -168,7 +168,7 @@ function MapSection() {
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Sheet title="Areas">
           {areas.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">No areas in this sample yet.</p>
+            <p className="px-4 py-10 text-center text-sm text-ink-soft md:px-5">No complaint areas yet.</p>
           ) : (
           <ul className="divide-y divide-line">
             {areas.map((a) => (

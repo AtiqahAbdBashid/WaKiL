@@ -1,29 +1,23 @@
-// YB page shell: office sidebar plus the mock-session switcher above each page.
-// Real auth (Google OAuth via backend) replaces the switcher, not the pages.
-import { Outlet } from 'react-router-dom'
+// YB page shell: office sidebar and the signed-in session guard.
+import { Navigate, Outlet } from 'react-router-dom'
 
 import DashboardShell from '../components/dashboard/DashboardShell'
 import YbSidebar from '../components/yb/YbSidebar'
 import { useYbAuth } from '../auth/YbAuthContext'
-import { ybStaff } from '../data/ybStaff'
+import { useYbComplaints } from '../context/YbComplaintsContext'
 
 export default function YbLayout() {
-  const { user, switchUser } = useYbAuth()
+  const { user, loading } = useYbAuth()
+  const { syncError } = useYbComplaints()
+  if (loading) return null
+  if (!user) return <Navigate to="/yb/login" replace />
   return (
     <DashboardShell sidebar={<YbSidebar />}>
-      <div className="border-b border-line bg-white px-4 py-2 text-sm md:px-8">
-        <label htmlFor="mock-user" className="mr-2 font-bold">Mock session:</label>
-        <select
-          id="mock-user"
-          value={user?.id ?? ''}
-          onChange={(e) => switchUser(e.target.value)}
-          className="rounded border border-line bg-white px-2 py-1 text-sm"
-        >
-          {ybStaff.filter((s) => s.active).map((s) => (
-            <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-          ))}
-        </select>
-      </div>
+      {syncError && (
+        <p role="alert" className="border-b border-line bg-white px-4 py-2 text-sm font-semibold text-red-700 md:px-8">
+          Could not save or load office data: {syncError}
+        </p>
+      )}
       <Outlet />
     </DashboardShell>
   )

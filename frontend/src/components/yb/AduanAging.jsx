@@ -6,10 +6,10 @@ import { ChevronDown } from "lucide-react";
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
 import { useYbAuth } from "../../auth/YbAuthContext";
-import { parseStamp, ybCategories, ybComplaints } from "../../data/ybSample";
-import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
+import { useYbComplaints } from "../../context/YbComplaintsContext";
+import { parseStamp } from "../../data/ybSample";
 
-const TODAY = Date.parse("2026-10-03T00:00:00Z");
+const TODAY = Date.now();
 const DAY = 86400000;
 
 const BUCKETS = [
@@ -29,6 +29,7 @@ function bucketOf(c) {
 
 export default function AduanAging() {
   const { canViewStaff } = useYbAuth();
+  const { complaints, caseGroups, staff, staffName, categories } = useYbComplaints();
   const [open, setOpen] = useState("0-30");
   const [mode, setMode] = useState("category");
 
@@ -36,15 +37,15 @@ export default function AduanAging() {
 
   const groups = useMemo(() => {
     const out = Object.fromEntries(BUCKETS.map((b) => [b.id, []]));
-    ybComplaints.forEach((c) => out[bucketOf(c).id].push(c));
+    complaints.forEach((c) => out[bucketOf(c).id].push(c));
     return out;
-  }, []);
+  }, [complaints]);
 
-  const total = ybComplaints.length;
+  const total = complaints.length;
 
   return (
     <Sheet title="Aduans by aging" className="h-full">
-      <p className="px-4 pt-3 text-xs text-ink-soft md:px-5">Age from created date · all statuses · as of 3 Oct 2026.</p>
+      <p className="px-4 pt-3 text-xs text-ink-soft md:px-5">Age from created date · all statuses · as of today.</p>
       <ul className="divide-y divide-line">
         {BUCKETS.map((b) => {
           const items = groups[b.id];
@@ -92,7 +93,7 @@ export default function AduanAging() {
                     <p className="py-2 text-sm text-ink-soft">No aduans in this range.</p>
                   ) : effectiveMode === "category" ? (
                     <ul className="divide-y divide-line rounded-2xl border border-line">
-                      {ybCategories.map((cat) => {
+                      {categories.map((cat) => {
                         const n = items.filter((c) => c.category === cat).length;
                         if (!n) return null;
                         return (
@@ -105,11 +106,11 @@ export default function AduanAging() {
                     </ul>
                   ) : (
                     <ul className="divide-y divide-line rounded-2xl border border-line">
-                      {[{ id: null, name: "Unassigned" }, ...ybStaff].map((s) => {
+                      {[{ id: null, name: "Unassigned" }, ...staff].map((s) => {
                         const key = s.id ?? "unassigned";
                         const n = items.filter((c) => {
                           const owner = c.case_group_id
-                            ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
+                            ? caseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
                             : null;
                           return owner === (s.id ?? null);
                         }).length;

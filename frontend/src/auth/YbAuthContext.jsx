@@ -1,25 +1,43 @@
-// Mock YB office session. Replace with Google OAuth code flow + backend verify later.
+// YB staff session. The signed token lives in sessionStorage (see ybApi); the
+// user is loaded from /api/me. Login is email-only until OAuth lands.
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { ybStaff } from "../data/ybStaff";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { ybApi } from "../lib/ybApi";
 
 const YbAuthContext = createContext(null);
 
-const isExpired = (u) => !!u?.expiresAt && new Date(u.expiresAt) < new Date();
-
 export function YbAuthProvider({ children }) {
-  const [userId, setUserId] = useState("u-representative");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(ybApi.hasToken());
 
-  // Session guard mirrors backend has_access: only active, unexpired staff resolve.
-  const user = ybStaff.find((s) => s.id === userId && s.active && !isExpired(s)) ?? null;
+  useEffect(() => {
+    if (!ybApi.hasToken()) return;
+    let live = true;
+    ybApi
+      .me()
+      .then((u) => live && setUser(u))
+      .catch(() => ybApi.logout())
+      .finally(() => live && setLoading(false));
+    return () => {
+      live = false;
+    };
+  }, []);
 
-  const login = useCallback((id) => setUserId(id), []);
-  const logout = useCallback(() => setUserId(null), []);
-  const mockGoogleLogin = useCallback((id = "u-representative") => setUserId(id), []);
+  const login = useCallback(async (email) => {
+    const u = await ybApi.googleLogin(email);
+    setUser(u);
+    return u;
+  }, []);
+
+  const logout = useCallback(() => {
+    ybApi.logout();
+    setUser(null);
+  }, []);
 
   const value = useMemo(
     () => ({
       user,
+      loading,
       userId: user?.id ?? null,
       role: user?.role ?? null,
       isRepresentative: user?.role === "Representative",
@@ -32,10 +50,8 @@ export function YbAuthProvider({ children }) {
       canMarkResolved: user?.role === "Representative",
       login,
       logout,
-      mockGoogleLogin,
-      switchUser: setUserId,
     }),
-    [user, login, logout, mockGoogleLogin]
+    [user, loading, login, logout]
   );
 
   return <YbAuthContext.Provider value={value}>{children}</YbAuthContext.Provider>;

@@ -5,14 +5,10 @@ import { Check, Eye, EyeOff, MapPin, Pencil, RotateCcw } from "lucide-react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import PageTitle from "../../components/ui/PageTitle";
-import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import { primaryButton, secondaryButton, textLink } from "../../components/ui/styles";
-import { ybKawasan } from "../../data/ybKawasan";
-import { aduanPins } from "../../data/aduanPins";
 import { ybApi } from "../../lib/ybApi";
 import { formatDate, formatDisplayRef } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { useYbComplaints } from "../../context/YbComplaintsContext";
 import { AduanMixChart, AduanTrendChart } from "../../components/yb/AduanCharts";
@@ -40,7 +36,7 @@ export default function DashboardPage() {
   return <RepresentativeDashboard key={user?.id ?? "anon"} />;
 }
 
-const STALE_CUT = Date.parse("2026-10-03T00:00:00Z") - 60 * 86400000;
+const STALE_CUT = Date.now() - 60 * 86400000;
 const isOpen = (c) => c.status === "Pending" || c.status === "In Progress";
 const isStale = (c) => c.status === "In Progress" && Date.parse(c.updatedAt) <= STALE_CUT;
 
@@ -58,7 +54,7 @@ function MyQueueDashboard({ user }) {
   );
   const activity = useMemo(
     () =>
-      complaints.flatMap((c) => (c.history ?? []).filter((h) => h.by === user.id).map((h) => ({ ...h, ref: c.id, title: c.title })))
+      complaints.flatMap((c) => (c.history ?? []).filter((h) => h.by === user.id).map((h) => ({ ...h, ref: c.ref_no ?? c.id, title: c.title })))
         .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
         .slice(0, 5),
     [complaints, user.id]
@@ -81,7 +77,6 @@ function MyQueueDashboard({ user }) {
           </Link>
         }
       />
-      <SampleNote label="Note:">This dashboard uses sample data until the complaint system is connected.</SampleNote>
       {isIntern && (
         <p className="rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-ink-soft md:px-5">
           Grouping only. Group from pool and move Pending to In Progress. Resolved and reassign stay with Representative and Aide.
@@ -118,7 +113,7 @@ function MyQueueDashboard({ user }) {
                     <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
                     <p className="truncate text-base font-bold text-ink">{c.title}</p>
                     <p className="mt-0.5 text-sm text-ink-soft">
-                      {c.category} · {c.locality} · since {formatDate(c.date)}
+                      {[c.category, c.locality].filter(Boolean).join(" · ")} · since {formatDate(c.date)}
                       {isStale(c) ? " · stale" : ""}
                       {c.needsRepresentativeAttention ? " · with Representative" : ""}
                     </p>
@@ -146,7 +141,7 @@ function MyQueueDashboard({ user }) {
                 <li key={c.id} className="px-4 py-3 md:px-5">
                   <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
                   <p className="text-sm font-bold text-ink">{c.title}</p>
-                  <p className="text-xs text-ink-soft">{c.category} · {c.locality} · {formatDate(c.date)}</p>
+                  <p className="text-xs text-ink-soft">{[c.category, c.locality].filter(Boolean).join(" · ")} · {formatDate(c.date)}</p>
                 </li>
               ))}
             </ul>
@@ -156,7 +151,7 @@ function MyQueueDashboard({ user }) {
 
       <Sheet title="My recent activity">
         {activity.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-ink-soft md:px-5">No actions yet in this sample.</p>
+          <p className="px-4 py-8 text-center text-sm text-ink-soft md:px-5">No actions yet.</p>
         ) : (
           <ul className="divide-y divide-line">
             {activity.map((h, i) => (
@@ -175,30 +170,31 @@ function MyQueueDashboard({ user }) {
 
 function RepresentativeDashboard() {
   const { user } = useYbAuth();
-  const { complaints, groupOwnerOf } = useYbComplaints();
+  const { complaints, groupOwnerOf, staff, kawasan } = useYbComplaints();
   const key = layoutKey(user?.id);
   // Per-group workload: members share their group's owner as single assignee.
   const ownerOf = (c) => groupOwnerOf(c);
   const workload = useMemo(
     () =>
-      ybStaff.map((s) => ({
+      staff.map((s) => ({
         staff: s,
         total: complaints.filter((c) => ownerOf(c) === s.id).length,
         open: complaints.filter((c) => ownerOf(c) === s.id && c.status !== "Resolved").length,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [complaints]
+    [complaints, staff]
   );
   const pool = complaints.filter((c) => !c.case_group_id).length;
   const totalComplaints = complaints.length;
 
   const [negeri, setNegeri] = useState(null);
   const [mapError, setMapError] = useState(null);
-  const [pins, setPins] = useState(aduanPins);
+  const [pins, setPins] = useState([]);
   useEffect(() => {
+    if (!kawasan) return;
     let live = true;
     ybApi
-      .kawasanGeojson({ level: ybKawasan.level, state: ybKawasan.state })
+      .kawasanGeojson({ level: kawasan.level, state: kawasan.state })
       .then((fc) => {
         if (live) setNegeri(fc);
       })
@@ -206,15 +202,15 @@ function RepresentativeDashboard() {
         if (live) setMapError("Kawasan map unavailable. Start the backend, or set VITE_API_URL.");
       });
     ybApi
-      .pins({ level: ybKawasan.level, state: ybKawasan.state, kod: ybKawasan.kod })
+      .pins({ level: kawasan.level, state: kawasan.state, kod: kawasan.kod })
       .then((p) => {
-        if (live && p?.length) setPins(p);
+        if (live) setPins(p);
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, []);
+  }, [kawasan]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [widgetsOpen, setWidgetsOpen] = useState(false);
@@ -275,7 +271,7 @@ function RepresentativeDashboard() {
 
   const kawasanContent = (
     <Sheet
-      title={`Kawasan: ${ybKawasan.state}`}
+      title={`Kawasan: ${kawasan?.state ?? ""}`}
       className="h-full"
       action={
         <Link to="/yb/analytics?tab=map" className={`${textLink} inline-flex min-h-11 items-center px-2 text-sm`}>
@@ -291,10 +287,10 @@ function RepresentativeDashboard() {
         ) : (
           <>
             <Suspense fallback={<p className="py-10 text-center text-sm text-ink-soft">Loading map…</p>}>
-              <KawasanMap negeri={negeri} highlightKod={ybKawasan.kod} pins={pins} />
+              <KawasanMap negeri={negeri} highlightKod={kawasan?.kod} pins={pins} />
             </Suspense>
             <p className="mt-2 text-sm text-ink-soft">
-              {ybKawasan.kod} {ybKawasan.name} highlighted · {negeri.features.length} {ybKawasan.level} boundaries · Peninsular 2018
+              {kawasan?.kod} {kawasan?.name} highlighted · {negeri.features.length} {kawasan?.level} boundaries · Peninsular 2018
             </p>
           </>
         )}
@@ -345,7 +341,7 @@ function RepresentativeDashboard() {
           </tr>
         </tfoot>
       </table>
-      <p className="px-4 py-2 text-xs text-ink-soft md:px-5">{staffName("u-representative")} holds none; closes only.</p>
+      <p className="px-4 py-2 text-xs text-ink-soft md:px-5">Representative holds none; closes only.</p>
     </Sheet>
   );
 
@@ -443,7 +439,6 @@ function RepresentativeDashboard() {
         </div>
       )}
 
-      <SampleNote label="Note:">This dashboard uses sample data until the complaint system is connected.</SampleNote>
 
       <p role="status" className="sr-only">
         {visibleIds.length} of {DASHBOARD_WIDGETS.length} widgets shown{isEditing ? ", editing layout" : ""}.

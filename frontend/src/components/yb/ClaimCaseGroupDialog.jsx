@@ -18,7 +18,7 @@ export default function ClaimCaseGroupDialog({
   onClose,
 }) {
   const dialogRef = useRef(null);
-  const [title, setTitle] = useState(() => (seed ? `${seed.category} round · ${seed.locality}` : ""));
+  const [title, setTitle] = useState(() => (seed ? `${seed.category} round${seed.locality ? ` · ${seed.locality}` : ""}` : ""));
   const [category, setCategory] = useState(() => seed?.category ?? defaultCategory ?? "");
   const [assigneeId, setAssigneeId] = useState("");
   const [extraIds, setExtraIds] = useState([]);
@@ -45,7 +45,7 @@ export default function ClaimCaseGroupDialog({
 
   const q = filter.trim().toLowerCase();
   const visible = candidates.filter(
-    (c) => !q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q)
+    (c) => !q || `${c.title} ${c.locality ?? ""} ${c.ref_no ?? ""}`.toLowerCase().includes(q)
   );
 
   const toggleExtra = (id) =>
@@ -88,7 +88,7 @@ export default function ClaimCaseGroupDialog({
         <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-4 md:px-5">
           <div>
             <p className="tabular text-xs font-semibold text-accent-ink">
-              Ruj. {formatDisplayRef(seed.id)} · {canClaim ? `Claimed by ${user?.name ?? "staff"}` : `Assigning to ${assigneeName ?? "an Aide or Intern"}`}
+              Ruj. {formatDisplayRef(seed)} · {canClaim ? `Claimed by ${user?.name ?? "staff"}` : `Assigning to ${assigneeName ?? "an Aide or Intern"}`}
             </p>
             <h2 id="claim-group-title" className="mt-0.5 text-lg font-extrabold text-ink">
               A Case Group is opened to claim this complaint
@@ -181,14 +181,14 @@ export default function ClaimCaseGroupDialog({
                         type="checkbox"
                         checked={extraIds.includes(c.id)}
                         onChange={() => toggleExtra(c.id)}
-                        aria-label={`Add complaint ${formatDisplayRef(c.id)} to group`}
+                        aria-label={`Add complaint ${formatDisplayRef(c)} to group`}
                         className="mt-1 h-4 w-4 accent-brand"
                       />
                       <span className="min-w-0 text-sm">
                         <span className="block font-bold text-ink">{c.title}</span>
                         <span className="block text-xs text-ink-soft">
-                          <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
-                          {" · "}{c.category} · {c.locality}
+                          <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</span>
+                          {" · "}{[c.category, c.locality].filter(Boolean).join(" · ")}
                         </span>
                       </span>
                     </label>

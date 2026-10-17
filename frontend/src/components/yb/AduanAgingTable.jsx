@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
 import { useYbAuth } from "../../auth/YbAuthContext";
-import { parseStamp, ybCategories, ybComplaints } from "../../data/ybSample";
-import { staffName, ybCaseGroups, ybStaff } from "../../data/ybStaff";
+import { useYbComplaints } from "../../context/YbComplaintsContext";
+import { parseStamp } from "../../data/ybSample";
 
-const TODAY = Date.parse("2026-10-03T00:00:00Z");
+const TODAY = Date.now();
 const DAY = 86400000;
 
 const isOpen = (c) => c.status === "Pending" || c.status === "In Progress";
@@ -41,6 +41,7 @@ const COLS = [
 
 export default function AduanAgingTable() {
   const { canViewStaff } = useYbAuth();
+  const { complaints, caseGroups, staff, staffName, categories } = useYbComplaints();
   const [mode, setMode] = useState("category");
 
   const effectiveMode = canViewStaff ? mode : "category";
@@ -49,19 +50,19 @@ export default function AduanAgingTable() {
     // Owner equals worker: staff rows count members of groups they own.
     const ownerOf = (c) =>
       c.case_group_id
-        ? ybCaseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
+        ? caseGroups.find((g) => g.id === c.case_group_id)?.owner_staff_id ?? null
         : null;
     const groups =
       effectiveMode === "category"
-        ? ybCategories.map((cat) => ({ key: cat, label: cat, sub: null, items: ybComplaints.filter((c) => c.category === cat) }))
+        ? categories.map((cat) => ({ key: cat, label: cat, sub: null, items: complaints.filter((c) => c.category === cat) }))
         : [
-            ...ybStaff.map((s) => ({ key: s.id, label: staffName(s.id), sub: s.role, items: ybComplaints.filter((c) => ownerOf(c) === s.id) })),
-            { key: "unassigned", label: "Unassigned", sub: "pool", items: ybComplaints.filter((c) => !ownerOf(c)) },
+            ...staff.map((s) => ({ key: s.id, label: staffName(s.id), sub: s.role, items: complaints.filter((c) => ownerOf(c) === s.id) })),
+            { key: "unassigned", label: "Unassigned", sub: "pool", items: complaints.filter((c) => !ownerOf(c)) },
           ];
     return groups.map((g) => ({ ...g, stats: rowStats(g.items) })).sort((a, b) => b.stats.total - a.stats.total);
-  }, [effectiveMode]);
+  }, [effectiveMode, complaints, caseGroups, staff, staffName, categories]);
 
-  const foot = useMemo(() => rowStats(ybComplaints), []);
+  const foot = useMemo(() => rowStats(complaints), [complaints]);
 
   return (
     <Sheet
@@ -86,7 +87,7 @@ export default function AduanAgingTable() {
       }
     >
       <p className="px-4 pt-3 text-xs text-ink-soft md:px-5">
-        Sorted by total desc · status at 3 Oct 2026 · no-update counts open aduans only, by days since last update.
+        Sorted by total desc · status as of today · no-update counts open aduans only, by days since last update.
       </p>
       <div className="overflow-x-auto px-4 py-3 md:px-5">
         <table className="w-full min-w-180 text-left text-sm">

@@ -6,8 +6,6 @@ import { Paperclip, X } from "lucide-react";
 import Badge from "../ui/Badge";
 import { inputClass, labelClass, primaryButton, secondaryButton, textLink } from "../ui/styles";
 import { END_FLOW_REASONS, formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
-import { citizenName } from "../../data/ybCitizens";
-import { staffName } from "../../data/ybStaff";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 import useDialogFocus from "./useDialogFocus";
 
@@ -59,7 +57,7 @@ export default function ComplaintDetailDialog({
   const [flagError, setFlagError] = useState("");
   const fileInputRef = useRef(null);
 
-  const { groupOwnerOf } = useYbComplaints();
+  const { groupOwnerOf, staffName } = useYbComplaints();
 
   useEffect(() => {
     if (!c) return;
@@ -223,7 +221,7 @@ export default function ComplaintDetailDialog({
           <div className="min-w-0">
             <p className="tabular text-xs font-semibold text-accent-ink">Ruj. {formatDisplayRef(c)}</p>
             <h2 id="aduan-dialog-title" className="mt-0.5 text-lg font-extrabold text-ink">{c.title}</h2>
-            <p className="mt-1 text-sm text-ink-soft">{c.category} · {c.locality}</p>
+            <p className="mt-1 text-sm text-ink-soft">{[c.category, c.locality].filter(Boolean).join(" · ")}</p>
             {c.needsRepresentativeAttention && (
               <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
                 Flagged for Representative review
@@ -252,11 +250,11 @@ export default function ComplaintDetailDialog({
 
           <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">
             <dt className="font-bold text-ink">Reporter</dt>
-            <dd className="text-ink">{citizenName(c.citizen_id)}</dd>
+            <dd className="text-ink">{c.citizen_name}</dd>
             <dt className="font-bold text-ink">Occurred</dt>
             <dd className="tabular text-ink">{formatDateTime(c.time_of_occurrence)}</dd>
             <dt className="font-bold text-ink">Kawasan</dt>
-            <dd className="text-ink">{c.locality}{c.constituency_kod ? ` · ${c.constituency_kod}` : ""}</dd>
+            <dd className="text-ink">{c.locality || (c.lat != null ? `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "Not pinned")}{c.constituency_kod ? ` · ${c.constituency_kod}` : ""}</dd>
             {c.case_group_id && (
               <>
                 <dt className="font-bold text-ink">Case group</dt>

@@ -1,9 +1,11 @@
-// Shared mock grouping state so Assigned Complaints and Complaint Pool see the same data.
-// En-bloc only: assignment lives on Case_Group.owner_staff_id; pool means no case_group_id.
+// Shared office data (complaints, case groups, staff, kawasan) loaded from the API so
+// Assigned Complaints and Complaint Pool see the same rows.
+// En-bloc only: assignment lives on the case group's owner; pool means no case_group_id.
+// Actions apply to local state at once, are saved through the API, then everything reloads.
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { ybComplaints } from "../data/ybSample";
-import { ybCaseGroups as initialGroups, ybStaff } from "../data/ybStaff";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useYbAuth } from "../auth/YbAuthContext";
+import { ybApi } from "../lib/ybApi";
 
 const YbComplaintsContext = createContext(null);
 
@@ -14,8 +16,53 @@ const nowIso = () => new Date().toISOString();
 export const isOpenComplaint = (c) => c.status === "Pending" || c.status === "In Progress";
 
 export function YbComplaintsProvider({ children }) {
-  const [complaints, setComplaints] = useState(ybComplaints);
-  const [caseGroups, setCaseGroups] = useState(initialGroups);
+  const { user: sessionUser } = useYbAuth();
+  const [complaints, setComplaints] = useState([]);
+  const [caseGroups, setCaseGroups] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [kawasan, setKawasan] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState(null);
+
+  const reload = useCallback(
+    () =>
+      Promise.all([
+        ybApi.aduan(),
+        ybApi.caseGroups(),
+        ybApi.staff(),
+        ybApi.kawasan(),
+        ybApi.categories(),
+      ])
+        .then(([aduan, groups, people, area, cats]) => {
+          setComplaints(aduan);
+          setCaseGroups(groups);
+          setStaff(people);
+          setKawasan(area);
+          setCategories(cats);
+          setSyncError(null);
+        })
+        .catch((e) => setSyncError(e.message))
+        .finally(() => setLoading(false)),
+    []
+  );
+
+  useEffect(() => {
+    if (sessionUser?.id) reload();
+  }, [sessionUser?.id, reload]);
+
+  const persist = useCallback(
+    (request) =>
+      request
+        .catch((e) => setSyncError(e.message))
+        .finally(reload),
+    [reload]
+  );
+
+  const staffName = useCallback(
+    (id) => staff.find((s) => s.id === id)?.name ?? "Unassigned",
+    [staff]
+  );
 
   const touch = useCallback((id, patch, entry) => {
     setComplaints((prev) =>
@@ -77,6 +124,7 @@ export function YbComplaintsProvider({ children }) {
               { by: user.id, at: nowIso(), action: "resolve", detail: `Flow ended: ${reason}` }
             );
           }
+          persist(ybApi.resolveAduan(id, { reason, repeatInGroup: true }));
           // Every open member resolved, so all members are ended now.
           setCaseGroups((prev) =>
             prev.map((g) => (g.id === targetGroup.id ? { ...g, status: "Closed" } : g))
@@ -90,6 +138,7 @@ export function YbComplaintsProvider({ children }) {
         }
 
         // End single.
+        persist(ybApi.resolveAduan(id, { reason, repeatInGroup: false }));
         touch(
           target.id,
           { status: "Resolved", needsRepresentativeAttention: false },
@@ -115,7 +164,7 @@ export function YbComplaintsProvider({ children }) {
 
       return { ok: false, message: "Invalid release mode." };
     },
-    [caseGroups, complaints, touch]
+    [caseGroups, complaints, touch, persist]
   );
 
   // Representative review flag. Only claimed In Progress complaints can be
@@ -139,6 +188,7 @@ export function YbComplaintsProvider({ children }) {
       } else if (!isOwner && !isRepresentative) {
         return { ok: false, message: "Only the owner or Representative can clear the flag." };
       }
+      persist(ybApi.patchAduan(id, { needsRepresentativeAttention: value }));
       touch(
         id,
         { needsRepresentativeAttention: value },
@@ -153,7 +203,7 @@ export function YbComplaintsProvider({ children }) {
       );
       return { ok: true };
     },
-    [caseGroups, complaints, touch]
+    [caseGroups, complaints, touch, persist]
   );
 
   // Open a case group from pool selection. Joining is final: every member
@@ -172,19 +222,16 @@ export function YbComplaintsProvider({ children }) {
       let ownerId = user.id;
       let ownerName = user.name;
       if (isRepresentative) {
-        const assignee = ybStaff.find(
-          (s) =>
-            s.id === ownerStaffId &&
-            s.active &&
-            !(s.expiresAt && new Date(s.expiresAt) < new Date()) &&
-            (s.role === "Aide" || s.role === "Intern")
+        const assignee = staff.find(
+          (s) => s.id === ownerStaffId && s.active && (s.role === "Aide" || s.role === "Intern")
         );
         if (!assignee)
           return { ok: false, message: "Pick an Aide or Intern to assign this group to." };
         ownerId = assignee.id;
         ownerName = assignee.name;
       }
-      const groupId = `cg-${Date.now()}`;
+      persist(ybApi.createCaseGroup({ title: title.trim(), category, complaintIds: eligible, ownerStaffId }));
+      const groupId = `pending-${Date.now()}`;
       const group = {
         id: groupId,
         title: title.trim(),
@@ -232,7 +279,7 @@ export function YbComplaintsProvider({ children }) {
           : `${eligible.length} complaint${eligible.length === 1 ? "" : "s"} claimed under ${group.title}.`,
       };
     },
-    [complaints]
+    [complaints, staff, persist]
   );
 
   // Move a complaint into an existing open case group. Pull model: dest must
@@ -259,6 +306,7 @@ export function YbComplaintsProvider({ children }) {
         ? caseGroups.find((g) => g.id === target.case_group_id) || null
         : null;
 
+      persist(ybApi.patchAduan(target.id, { case_group_id: dest.id }));
       touch(
         target.id,
         {
@@ -311,7 +359,7 @@ export function YbComplaintsProvider({ children }) {
           : `Complaint ${target.ref_no ?? target.id} added to ${dest.title}.`,
       };
     },
-    [caseGroups, complaints, touch]
+    [caseGroups, complaints, touch, persist]
   );
 
   // Pull a whole case group into another open group the caller owns.
@@ -337,6 +385,7 @@ export function YbComplaintsProvider({ children }) {
       if (members.length === 0)
         return { ok: false, message: "No open members to pull." };
 
+      persist(ybApi.pullGroup(source.id, dest.id));
       for (const m of members) {
         touch(
           m.id,
@@ -363,7 +412,7 @@ export function YbComplaintsProvider({ children }) {
         message: `${members.length} complaint${members.length === 1 ? "" : "s"} pulled from ${source.title} to ${dest.title}.`,
       };
     },
-    [caseGroups, complaints, touch]
+    [caseGroups, complaints, touch, persist]
   );
 
   // Updates append a history entry; repeatInGroup shares one update across every
@@ -371,6 +420,7 @@ export function YbComplaintsProvider({ children }) {
   const addUpdate = useCallback(
     (id, { detail, attachmentName, repeatInGroup }, user) => {
       const target = complaints.find((x) => x.id === id);
+      persist(ybApi.addUpdate(id, { detail, attachmentName, repeatInGroup }));
       const entryFor = (suffix) => ({
         by: user.id,
         at: nowIso(),
@@ -394,13 +444,20 @@ export function YbComplaintsProvider({ children }) {
       touch(id, { updatedAt: nowIso() }, entryFor(null));
       return { count: 1, groupId: null };
     },
-    [complaints, touch]
+    [complaints, touch, persist]
   );
 
   const value = useMemo(
     () => ({
       complaints,
       caseGroups,
+      staff,
+      staffName,
+      kawasan,
+      categories,
+      loading,
+      syncError,
+      reload,
       groupMembers,
       groupOwnerOf,
       touch,
@@ -414,6 +471,13 @@ export function YbComplaintsProvider({ children }) {
     [
       complaints,
       caseGroups,
+      staff,
+      staffName,
+      kawasan,
+      categories,
+      loading,
+      syncError,
+      reload,
       groupMembers,
       groupOwnerOf,
       touch,

@@ -30,7 +30,7 @@ export async function sendChatMessage(message, sessionId = null, image = null) {
         errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail)
       }
     } catch {
-      // ignore json parse error
+      // Non-JSON error body: keep the default message.
     }
     throw new Error(errorDetail)
   }

@@ -1,65 +1,79 @@
-// Mock staff roster: invite, deactivate, expiry flag. Representative-only in real backend.
+// Staff roster: invite and deactivate. Representative-only; saved through the API.
+// Intern expiry is not stored, so the expiry field is not offered.
 import { useState } from "react";
 import PageTitle from "../../components/ui/PageTitle";
-import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import { inputClass, labelClass, primaryButton } from "../../components/ui/styles";
-import { formatDate } from "../../data/ybSample";
-import { ybStaff as initial } from "../../data/ybStaff";
 import { useYbAuth } from "../../auth/YbAuthContext";
-
-const isExpired = (s) => !!s.expiresAt && new Date(s.expiresAt) < new Date();
+import { useYbComplaints } from "../../context/YbComplaintsContext";
+import { ybApi } from "../../lib/ybApi";
 
 export default function StaffPage() {
   const { isStaffManager, canViewStaff } = useYbAuth();
-  const [staff, setStaff] = useState(initial);
+  const { staff, reload } = useYbComplaints();
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [role, setRole] = useState("Intern");
-  const [expiry, setExpiry] = useState("");
+  const [error, setError] = useState("");
+
+  const run = async (request) => {
+    setError("");
+    try {
+      await request();
+      await reload();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
 
   const invite = (e) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setStaff((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, name: email.split("@")[0], role, email, active: true, expiresAt: expiry ? `${expiry}T23:59:59+08:00` : null, initials: email.slice(0, 2).toUpperCase() },
-    ]);
-    setEmail("");
-    setExpiry("");
+    run(async () => {
+      await ybApi.inviteStaff({ email: email.trim(), role, name: name.trim() || null });
+      setEmail("");
+      setName("");
+    });
   };
 
-  const toggle = (id) => setStaff((prev) => prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
+  const toggle = (s) => run(() => ybApi.setStaffActive(s.id, !s.active));
 
-  if (!canViewStaff) return <p className="py-10 text-center text-sm text-muted">Staff roster is visible to Representative only. Switch mock session to YB Khairul.</p>;
+  if (!canViewStaff) return <p className="py-10 text-center text-sm text-muted">Staff roster is visible to Representative only.</p>;
 
   return (
     <div className="w-full space-y-8">
-      <PageTitle title="Staff" subtitle="Aide permanent, Intern temporary with expiry. Representative manages." />
-      <SampleNote label="Note:">Mock roster, not saved. Expired + deactivated auto-lose access.</SampleNote>
+      <PageTitle title="Staff" subtitle="Representative manages Aides and Interns. Deactivated staff lose access." />
 
-      <Sheet title={`${staff.filter((s) => s.active && !isExpired(s)).length} active`}>
+      {error && <p role="alert" className="text-sm font-semibold text-red-700">{error}</p>}
+
+      <Sheet title={`${staff.filter((s) => s.active).length} active`}>
         <ul className="divide-y divide-line">
           {staff.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5">
               <div>
                 <p className="font-bold text-ink">{s.name} · {s.role}</p>
-                <p className="text-sm text-ink-soft">{s.email}{s.expiresAt ? ` · ends ${formatDate(s.expiresAt)}` : ""}</p>
+                <p className="text-sm text-ink-soft">{s.email}</p>
                 {!s.active && <p className="text-sm font-bold text-brand">Deactivated</p>}
-                {isExpired(s) && <p className="text-sm font-bold text-brand">Expired</p>}
               </div>
-              <button onClick={() => toggle(s.id)} disabled={!isStaffManager} className="text-sm font-bold text-brand underline decoration-2 underline-offset-4 disabled:text-ink-soft">
-                {s.active ? "Deactivate" : "Reactivate"}
-              </button>
+              {s.role !== "Representative" && (
+                <button onClick={() => toggle(s)} disabled={!isStaffManager} className="text-sm font-bold text-brand underline decoration-2 underline-offset-4 disabled:text-ink-soft">
+                  {s.active ? "Deactivate" : "Reactivate"}
+                </button>
+              )}
             </li>
           ))}
         </ul>
       </Sheet>
 
       <Sheet title="Invite">
-        <form onSubmit={invite} className="grid gap-3 p-4 md:grid-cols-[2fr_1fr_1fr_auto] md:p-5">
+        <form onSubmit={invite} className="grid gap-3 p-4 md:grid-cols-[1fr_2fr_1fr_auto] md:p-5">
           <div>
-            <label htmlFor="staff-email" className={labelClass}>Google email</label>
-            <input id="staff-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@gmail.com" className={inputClass} />
+            <label htmlFor="staff-name" className={labelClass}>Name</label>
+            <input id="staff-name" type="text" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} placeholder="Optional" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="staff-email" className={labelClass}>Office email</label>
+            <input id="staff-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@parlimen.gov.my" className={inputClass} />
           </div>
           <div>
             <label htmlFor="staff-role" className={labelClass}>Role</label>
@@ -68,15 +82,10 @@ export default function StaffPage() {
               <option>Intern</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="staff-expiry" className={labelClass}>Expiry (Intern)</label>
-            <input id="staff-expiry" type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className={inputClass} />
-          </div>
           <div className="flex items-end">
             <button type="submit" disabled={!isStaffManager} className={primaryButton}>Invite</button>
           </div>
         </form>
-        {!isStaffManager && <p className="px-4 pb-4 text-sm text-ink-soft md:px-5">Only Representative can invite in real backend.</p>}
       </Sheet>
     </div>
   );

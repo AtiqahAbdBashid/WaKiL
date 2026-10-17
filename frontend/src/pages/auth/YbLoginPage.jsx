@@ -1,5 +1,5 @@
-// YB sign-in (mock): email form and Google button both land on the dashboard.
-// Real office auth replaces both paths; see the TODO on handleSubmit.
+// YB sign-in: the office email is checked against the staff table. The password
+// field is not sent yet; passwords arrive with real office auth (OAuth).
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
@@ -7,15 +7,28 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-
 import Button from '../../components/ui/Button'
 import IconButton from '../../components/ui/IconButton'
 import TextField from '../../components/ui/TextField'
+import { ybApi } from '../../lib/ybApi'
 
 export default function YbLoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
 
-  // TODO: replace with real YB office authentication
-  const handleSubmit = (e) => {
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    navigate('/yb/dashboard')
+    setError('')
+    setSubmitting(true)
+    try {
+      await ybApi.googleLogin(email.trim())
+      navigate('/yb/dashboard')
+    } catch (err) {
+      setError(err.status === 401 ? 'This email has no office access.' : 'Could not sign in. Is the server running?')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -36,6 +49,8 @@ export default function YbLoginPage() {
             name="email"
             required
             autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             icon={Mail}
             placeholder="name@parlimen.gov.my"
           />
@@ -43,7 +58,6 @@ export default function YbLoginPage() {
             label="Password"
             type={showPassword ? 'text' : 'password'}
             name="password"
-            required
             autoComplete="current-password"
             icon={LockKeyhole}
             placeholder="Enter your password"
@@ -67,17 +81,15 @@ export default function YbLoginPage() {
           </a>
         </div>
 
-        <Button type="submit" size="lg" className="mt-6 w-full">
+        {error && (
+          <p role="alert" className="mt-4 text-sm font-semibold text-red-700">
+            {error}
+          </p>
+        )}
+
+        <Button type="submit" size="lg" className="mt-6 w-full" disabled={submitting}>
           Sign in <ArrowRight className="h-5 w-5" aria-hidden="true" />
         </Button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/yb/dashboard')}
-          className="mt-3 w-full rounded-2xl border border-line bg-white py-3 text-sm font-bold text-ink hover:bg-canvas"
-        >
-          Continue with Google (mock)
-        </button>
 
         <div className="mt-6 space-y-3 border-t border-line pt-6 text-sm text-muted">
           <p className="flex items-start gap-2">

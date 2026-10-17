@@ -11,15 +11,22 @@ import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import ClaimCaseGroupDialog from "../../components/yb/ClaimCaseGroupDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
-import { formatDate, formatDisplayRef, ybCategories } from "../../data/ybSample";
-import { staffName, ybStaff } from "../../data/ybStaff";
+import { formatDate, formatDisplayRef } from "../../data/ybSample";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 
 export default function ComplaintPoolPage() {
   const { user, canClaim } = useYbAuth();
-  const { complaints, caseGroups, groupMembers, createGroupWithSelection, moveToExistingGroup } =
-    useYbComplaints();
+  const {
+    complaints,
+    caseGroups,
+    groupMembers,
+    createGroupWithSelection,
+    moveToExistingGroup,
+    staff,
+    staffName,
+    categories,
+  } = useYbComplaints();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [announcement, setAnnouncement] = useState("");
@@ -31,7 +38,7 @@ export default function ComplaintPoolPage() {
   // filter here — only category and free-text search.
   const matches = (c) =>
     (category === "All" || c.category === category) &&
-    (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
+    (!q || `${c.title} ${c.locality ?? ""} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
   const pool = complaints
     .filter((c) => !c.case_group_id && matches(c))
@@ -60,10 +67,9 @@ export default function ComplaintPoolPage() {
     setSelectedId(null);
   };
 
-  const assignableStaff = ybStaff.filter(
+  const assignableStaff = staff.filter(
     (s) =>
       s.active &&
-      !(s.expiresAt && new Date(s.expiresAt) < new Date()) &&
       (s.role === "Aide" || s.role === "Intern")
   );
 
@@ -95,14 +101,14 @@ export default function ComplaintPoolPage() {
         title="Complaint Pool"
         subtitle="Ungrouped complaints. Open a complaint to group it and claim en-bloc via a Case Group."
       />
-      <SampleNote label="Note:">Mock multi-staff grouping. Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative groups and assigns to an Aide or Intern.</SampleNote>
+      <SampleNote label="Note:">Open a complaint to group it. Aide and Intern group and claim en-bloc; Representative groups and assigns to an Aide or Intern.</SampleNote>
 
       <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
         <div>
           <label htmlFor="pool-category" className={labelClass}>Category</label>
           <select id="pool-category" value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
             <option>All</option>
-            {ybCategories.map((c) => <option key={c}>{c}</option>)}
+            {categories.map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div>
@@ -142,7 +148,7 @@ export default function ComplaintPoolPage() {
               <tbody>
                 {pool.map((c) => (
                   <tr key={c.id} className="border-b border-line align-top last:border-b-0">
-                    <td className="tabular px-4 py-3 font-semibold text-accent-ink md:px-5">{formatDisplayRef(c.id)}</td>
+                    <td className="tabular px-4 py-3 font-semibold text-accent-ink md:px-5">{formatDisplayRef(c)}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => setSelectedId(c.id)}
@@ -151,7 +157,7 @@ export default function ComplaintPoolPage() {
                       >
                         {c.title}
                       </button>
-                      <p className="text-ink-soft">{c.category} · {c.locality}</p>
+                      <p className="text-ink-soft">{[c.category, c.locality].filter(Boolean).join(" · ")}</p>
                       {(c.history ?? []).length > 0 && (
                         <p className="mt-1 text-xs text-ink-soft">
                           {(c.history ?? []).slice(-2).map((h) => `${formatDate(h.at)} ${staffName(h.by)}: ${h.detail}`).join(" · ")}
@@ -189,7 +195,7 @@ export default function ComplaintPoolPage() {
         candidates={claimCandidates}
         user={user}
         canClaim={canClaim}
-        defaultCategory={seedComplaint?.category ?? ybCategories[0]}
+        defaultCategory={seedComplaint?.category ?? categories[0] ?? ""}
         assignees={assignableStaff}
         onConfirm={onConfirmClaim}
         onClose={() => setClaimSeedId(null)}

@@ -19,11 +19,10 @@ import {
   referenceNow,
 } from "../../data/ybNotifications";
 import { formatDate, formatDateTime, formatDisplayRef } from "../../data/ybSample";
-import { staffName } from "../../data/ybStaff";
 
 export default function NotificationsPage() {
   const { user } = useYbAuth();
-  const { complaints, caseGroups } = useYbComplaints();
+  const { complaints, caseGroups, staffName } = useYbComplaints();
   const [filter, setFilter] = useState("all");
 
   const now = useMemo(() => referenceNow(complaints), [complaints]);
@@ -33,8 +32,8 @@ export default function NotificationsPage() {
     [complaints, caseGroups, user]
   );
   const feed = useMemo(
-    () => buildYbNotifications(complaints, caseGroups, user),
-    [complaints, caseGroups, user]
+    () => buildYbNotifications(complaints, caseGroups, user, staffName),
+    [complaints, caseGroups, user, staffName]
   );
   const shown = useMemo(() => feed.filter((n) => matchesFilter(n, filter)), [feed, filter]);
 
@@ -72,7 +71,7 @@ export default function NotificationsPage() {
                     </p>
                     <p className="text-sm font-bold text-ink">{c.title}</p>
                     <p className="text-xs text-ink-soft">
-                      {c.category} · {c.locality} · {formatDate(c.date)}
+                      {[c.category, c.locality].filter(Boolean).join(" · ")} · {formatDate(c.date)}
                     </p>
                   </li>
                 ))}

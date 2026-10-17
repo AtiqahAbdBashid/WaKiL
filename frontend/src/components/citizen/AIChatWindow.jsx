@@ -99,7 +99,6 @@ export default function AIChatWindow() {
   const [attachedImage, setAttachedImage] = useState(null)
   const lastImageRef = useRef(null)
 
-  // Chat History Sidebar states
   const [sessions, setSessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -126,13 +125,11 @@ export default function AIChatWindow() {
 
   const handleMapConfirm = ({ formatted }) => {
     setPinnedLocation(formatted)
-    // Immediately send the exact pinned location into the AI intake chat
     send(`Lokasi kejadian: ${formatted}`)
   }
 
   const empty = flow.length === 0 && !loading
 
-  // Auto-scroll when messages update or loading state changes
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return

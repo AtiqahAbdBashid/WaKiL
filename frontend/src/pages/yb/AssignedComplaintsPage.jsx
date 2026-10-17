@@ -12,12 +12,11 @@ import SampleNote from "../../components/ui/SampleNote";
 import Sheet from "../../components/ui/Sheet";
 import ComplaintDetailDialog from "../../components/yb/ComplaintDetailDialog";
 import { inputClass, labelClass, textLink } from "../../components/ui/styles";
-import { formatDate, formatDisplayRef, ybCategories } from "../../data/ybSample";
-import { staffName } from "../../data/ybStaff";
+import { formatDate, formatDisplayRef } from "../../data/ybSample";
 import { useYbAuth } from "../../auth/YbAuthContext";
 import { isOpenComplaint, useYbComplaints } from "../../context/YbComplaintsContext";
 
-const STALE_CUT = Date.parse("2026-10-03T00:00:00Z") - 60 * 86400000;
+const STALE_CUT = Date.now() - 60 * 86400000;
 
 export default function AssignedComplaintsPage() {
   const { user, canClaim, canMarkResolved } = useYbAuth();
@@ -31,6 +30,8 @@ export default function AssignedComplaintsPage() {
     moveGroupToGroup,
     addUpdate,
     setAttention,
+    staffName,
+    categories,
   } = useYbComplaints();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -71,7 +72,7 @@ export default function AssignedComplaintsPage() {
   const q = query.trim().toLowerCase();
   const matches = (c) =>
     (category === "All" || c.category === category) &&
-    (!q || `${c.title} ${c.locality} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
+    (!q || `${c.title} ${c.locality ?? ""} ${c.ref_no ?? ""}`.toLowerCase().includes(q));
 
   const sortOpenFirst = (a, b) => {
     if (a.status === "Open" && b.status !== "Open") return -1;
@@ -126,7 +127,7 @@ export default function AssignedComplaintsPage() {
     setAnnouncement(
       result?.count > 1
         ? `Update added to ${result.count} complaints in the case group${attachmentName ? ` with ${attachmentName}` : ""}.`
-        : `Update added to ${formatDisplayRef(id)}${attachmentName ? ` with ${attachmentName}` : ""}.`
+        : `Update added to ${formatDisplayRef(complaints.find((x) => x.id === id) ?? id)}${attachmentName ? ` with ${attachmentName}` : ""}.`
     );
   };
 
@@ -237,8 +238,8 @@ export default function AssignedComplaintsPage() {
                               {c.title}
                             </button>
                             <p className="text-xs text-ink-soft">
-                              <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c.id)}</span>
-                              {" · "}{c.category} · {c.locality}
+                              <span className="tabular font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</span>
+                              {" · "}{[c.category, c.locality].filter(Boolean).join(" · ")}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
@@ -263,7 +264,7 @@ export default function AssignedComplaintsPage() {
         title="Assigned Complaints"
         subtitle="Your case groups, plus other open groups you can pull from."
       />
-      <SampleNote label="Note:">Mock multi-staff grouping. Your groups are fully editable; other open groups are read-only. Open a complaint to pull it into a group you own.</SampleNote>
+      <SampleNote label="Note:">Your groups are fully editable; other open groups are read-only. Open a complaint to pull it into a group you own.</SampleNote>
 
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {queueStats.map((s) => (
@@ -299,7 +300,7 @@ export default function AssignedComplaintsPage() {
                         {c.title}
                       </button>
                       <p className="text-xs text-ink-soft">
-                        {c.category} · {c.locality}
+                        {[c.category, c.locality].filter(Boolean).join(" · ")}
                         {group ? ` · ${group.title} · ${staffName(group.owner_staff_id)}` : ""}
                       </p>
                       <p className="mt-0.5 text-xs text-ink-soft">
@@ -321,7 +322,7 @@ export default function AssignedComplaintsPage() {
           <label htmlFor="assigned-category" className={labelClass}>Category</label>
           <select id="assigned-category" value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
             <option>All</option>
-            {ybCategories.map((c) => <option key={c}>{c}</option>)}
+            {categories.map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div>

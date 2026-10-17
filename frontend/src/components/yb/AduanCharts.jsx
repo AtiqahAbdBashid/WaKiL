@@ -5,7 +5,8 @@ import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContaine
 
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
-import { parseStamp, ybCategories, ybComplaints, ybStatuses } from "../../data/ybSample";
+import { useYbComplaints } from "../../context/YbComplaintsContext";
+import { parseStamp, ybStatuses } from "../../data/ybSample";
 
 const STATUS_COLORS = {
   Pending: "#B45309",
@@ -36,14 +37,15 @@ const weekStart = (iso) => {
 const weekLabel = (iso) => new Date(parseStamp(iso)).toLocaleDateString("en-MY", { day: "numeric", month: "short", timeZone: "UTC" });
 
 export function AduanMixChart({ hideAnalyticsLink = false }) {
+  const { complaints, categories } = useYbComplaints();
   const [view, setView] = useState("Bar");
   const byStatus = useMemo(
-    () => ybStatuses.map((s) => ({ label: s, count: ybComplaints.filter((c) => c.status === s).length })),
-    []
+    () => ybStatuses.map((s) => ({ label: s, count: complaints.filter((c) => c.status === s).length })),
+    [complaints]
   );
   const byCategory = useMemo(
-    () => ybCategories.map((cat) => ({ label: cat, count: ybComplaints.filter((c) => c.category === cat).length })),
-    []
+    () => categories.map((cat) => ({ label: cat, count: complaints.filter((c) => c.category === cat).length })),
+    [categories, complaints]
   );
   const rows = view === "Bar" ? byStatus : byCategory;
   const colorOf = (label, i) => (view === "Bar" ? STATUS_COLORS[label] : CATEGORY_COLORS[i % CATEGORY_COLORS.length]);
@@ -91,15 +93,16 @@ export function AduanMixChart({ hideAnalyticsLink = false }) {
 }
 
 export function AduanTrendChart() {
+  const { complaints, categories } = useYbComplaints();
   const [mode, setMode] = useState("Status");
   const [cumulative, setCumulative] = useState(false);
-  const dims = mode === "Status" ? ybStatuses : ybCategories;
+  const dims = mode === "Status" ? ybStatuses : categories;
   const series = useMemo(() => {
-    const weeks = [...new Set(ybComplaints.map((c) => weekStart(c.date)))].sort();
+    const weeks = [...new Set(complaints.map((c) => weekStart(c.date)))].sort();
     const rows = weeks.map((w) => {
       const row = { week: weekLabel(w) };
       dims.forEach((d) => {
-        row[d] = ybComplaints.filter((c) => weekStart(c.date) === w && (mode === "Status" ? c.status === d : c.category === d)).length;
+        row[d] = complaints.filter((c) => weekStart(c.date) === w && (mode === "Status" ? c.status === d : c.category === d)).length;
       });
       return row;
     });
@@ -114,7 +117,7 @@ export function AduanTrendChart() {
       });
       return out;
     });
-  }, [dims, mode, cumulative]);
+  }, [dims, mode, cumulative, complaints]);
   const colorOf = (d, i) => (mode === "Status" ? STATUS_COLORS[d] : CATEGORY_COLORS[i % CATEGORY_COLORS.length]);
 
   return (

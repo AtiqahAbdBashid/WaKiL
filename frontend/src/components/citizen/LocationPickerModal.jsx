@@ -114,7 +114,6 @@ export default function LocationPickerModal({
     [reverseGeocode],
   )
 
-  // Initialize Leaflet map when modal opens
   useEffect(() => {
     if (!isOpen) return
 

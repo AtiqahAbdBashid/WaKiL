@@ -1,10 +1,6 @@
-// YB notifications, derived read-only from the shared mock grouping state.
-// No NOTIFICATION entity exists in ER v3, so this file builds the feed from
-// COMPLAINT + history (COMPLAINT_UPDATE equivalent) + CASE_GROUP ownership.
-// Start-of-day pool digest and end-of-day review digest are computed against
-// the latest sample timestamp so the mock timeline still reads as "today".
-import { staffName } from "./ybStaff";
-
+// YB notifications, derived read-only from the shared complaint data.
+// There is no notification table, so this file builds the feed from
+// complaints, their updates and case group ownership.
 const STALE_DAYS = 60;
 const DAY_MS = 86400000;
 
@@ -13,15 +9,8 @@ const toTime = (v) => {
   return Number.isNaN(t) ? 0 : t;
 };
 
-// Simulated "today": the newest stamp in the dataset. Keeps the mock feed
-// meaningful when the sample dates sit behind the real clock.
-export function referenceNow(complaints) {
-  let max = 0;
-  for (const c of complaints ?? []) {
-    max = Math.max(max, toTime(c.date), toTime(c.updatedAt));
-    for (const h of c.history ?? []) max = Math.max(max, toTime(h.at));
-  }
-  return max || Date.now();
+export function referenceNow() {
+  return Date.now();
 }
 
 const startOfDay = (t) => {
@@ -93,7 +82,7 @@ const kindLabel = {
 };
 
 // Flat event feed from history, newest first, scoped by role.
-export function buildYbNotifications(complaints, caseGroups, user) {
+export function buildYbNotifications(complaints, caseGroups, user, staffName) {
   const now = referenceNow(complaints);
   const isRepresentative = user?.role === "Representative";
   const out = [];
@@ -110,7 +99,7 @@ export function buildYbNotifications(complaints, caseGroups, user) {
         kind: "arrival",
         label: kindLabel.arrival,
         title: c.title,
-        detail: `Entered the pool · ${c.category} · ${c.locality}`,
+        detail: `Entered the pool · ${c.category}${c.locality ? ` · ${c.locality}` : ""}`,
         by: null,
         byName: null,
         at: c.date,

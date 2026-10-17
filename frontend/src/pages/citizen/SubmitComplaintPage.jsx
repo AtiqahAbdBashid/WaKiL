@@ -59,7 +59,6 @@ const QUICK_TIMES = [
 export default function SubmitComplaintPage() {
   const navigate = useNavigate()
 
-  // Form states
   const [whatHappened, setWhatHappened] = useState('')
   const [location, setLocation] = useState('')
   const [whenText, setWhenText] = useState('')
@@ -69,19 +68,16 @@ export default function SubmitComplaintPage() {
   const [image, setImage] = useState(null)
   const fileInputRef = useRef(null)
 
-  // AI suggestion states
   const [aiSuggesting, setAiSuggesting] = useState(false)
   const [aiSuggestion, setAiSuggestion] = useState(null)
   const [aiError, setAiError] = useState(null)
   const debounceTimer = useRef(null)
 
-  // Submission states
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [submittedTicket, setSubmittedTicket] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  // Map and Geolocation states
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [locatingCurrent, setLocatingCurrent] = useState(false)
 
@@ -138,7 +134,6 @@ export default function SubmitComplaintPage() {
   }
 
 
-  // Load official categories on mount
   useEffect(() => {
     let active = true
     fetchCategories().then((cats) => {
@@ -177,7 +172,6 @@ export default function SubmitComplaintPage() {
     currentTime = whenText,
     currentImage = image,
   ) => {
-    // Requires either a summary or an image
     if (!summaryToAnalyze.trim() && !currentImage) return
 
     setAiSuggesting(true)
@@ -190,7 +184,6 @@ export default function SubmitComplaintPage() {
         image: currentImage,
       })
       setAiSuggestion(result)
-      // Automatically apply category if user hasn't selected one yet
       if (!category && result.category) {
         setCategory(result.category)
       }
@@ -306,9 +299,6 @@ export default function SubmitComplaintPage() {
     setSubmittedTicket(null)
   }
 
-  // ==========================================
-  // SUCCESS VIEW: Rendered upon submission
-  // ==========================================
   if (submittedTicket) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
@@ -457,12 +447,8 @@ export default function SubmitComplaintPage() {
     )
   }
 
-  // ==========================================
-  // FORM VIEW
-  // ==========================================
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-8">
-      {/* Top navigation & header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
         <div className="flex items-center gap-3">
           <button

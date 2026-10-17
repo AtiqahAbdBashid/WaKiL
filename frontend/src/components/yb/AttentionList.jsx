@@ -45,7 +45,7 @@ export default function AttentionList() {
               <p className="tabular text-xs font-semibold text-accent-ink">Ref. {formatDisplayRef(c)}</p>
               <h3 className="mt-0.5 text-base font-bold text-ink">{c.title}</h3>
               <p className="mt-0.5 text-sm text-ink-soft">
-                {c.category} · {c.locality} · {reason(c)}
+                {[c.category, c.locality].filter(Boolean).join(" · ")} · {reason(c)}
               </p>
             </div>
             <Badge>{c.status}</Badge>
