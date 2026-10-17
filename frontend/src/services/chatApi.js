@@ -1,5 +1,29 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+// JSON request helper. On failure it throws the backend's `detail` when present,
+// otherwise `failureMessage`.
+async function request(path, { method = 'GET', body, failureMessage }) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    ...(body !== undefined
+      ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : {}),
+  })
+
+  if (!res.ok) {
+    let message = failureMessage
+    try {
+      const { detail } = await res.json()
+      if (detail) message = typeof detail === 'string' ? detail : JSON.stringify(detail)
+    } catch {
+      // Non-JSON error body: keep the fallback message.
+    }
+    throw new Error(message)
+  }
+
+  return res.json()
+}
+
 /**
  * Send a chat message to WaKiL AI.
  * @param {string} message - The message text sent by citizen.
@@ -14,28 +38,7 @@ export async function sendChatMessage(message, sessionId = null, image = null) {
     ...(image ? { image } : {}),
   }
 
-  const res = await fetch(`${API_BASE}/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to get response from WaKiL AI.'
-    try {
-      const errJson = await res.json()
-      if (errJson?.detail) {
-        errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail)
-      }
-    } catch {
-      // Non-JSON error body: keep the default message.
-    }
-    throw new Error(errorDetail)
-  }
-
-  return res.json()
+  return request('/chat', { method: 'POST', body: payload, failureMessage: 'Failed to get response from WaKiL AI.' })
 }
 
 /**
@@ -56,28 +59,7 @@ export async function confirmComplaint(sessionId, location = null, image = null)
     ...(image ? { image } : {}),
   }
 
-  const res = await fetch(`${API_BASE}/chat/confirm`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to confirm complaint.'
-    try {
-      const errJson = await res.json()
-      if (errJson?.detail) {
-        errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail)
-      }
-    } catch {
-      // ignore json parse error
-    }
-    throw new Error(errorDetail)
-  }
-
-  return res.json()
+  return request('/chat/confirm', { method: 'POST', body: payload, failureMessage: 'Failed to confirm complaint.' })
 }
 
 /**
@@ -90,33 +72,16 @@ export async function suggestCategory({ summary = '', location = '', when = '', 
     throw new Error('Either summary or an image is required to suggest category.')
   }
 
-  const res = await fetch(`${API_BASE}/complaints/suggest-category`, {
+  return request('/complaints/suggest-category', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+    body: {
       summary: summary ? summary.trim() : '',
       location,
       when,
       ...(image ? { image } : {}),
-    }),
+    },
+    failureMessage: 'Failed to suggest category with AI.',
   })
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to suggest category with AI.'
-    try {
-      const errJson = await res.json()
-      if (errJson?.detail) {
-        errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail)
-      }
-    } catch {
-      // ignore
-    }
-    throw new Error(errorDetail)
-  }
-
-  return res.json()
 }
 
 /**
@@ -125,28 +90,7 @@ export async function suggestCategory({ summary = '', location = '', when = '', 
  * @returns {Promise<{ ticket_id: string, status: string, category: string, priority: string, summary: string }>}
  */
 export async function submitComplaintForm(data) {
-  const res = await fetch(`${API_BASE}/complaints`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to submit complaint.'
-    try {
-      const errJson = await res.json()
-      if (errJson?.detail) {
-        errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail)
-      }
-    } catch {
-      // ignore
-    }
-    throw new Error(errorDetail)
-  }
-
-  return res.json()
+  return request('/complaints', { method: 'POST', body: data, failureMessage: 'Failed to submit complaint.' })
 }
 
 /**
@@ -182,11 +126,7 @@ export async function fetchCategories() {
  * @returns {Promise<Array<{ id: string, status: string, started_at: string, ended_at?: string, title: string, preview?: string, complaint_ticket_id?: string, message_count: number }>>}
  */
 export async function fetchChatSessions() {
-  const res = await fetch(`${API_BASE}/chat/sessions`)
-  if (!res.ok) {
-    throw new Error('Failed to load chat history.')
-  }
-  return res.json()
+  return request('/chat/sessions', { failureMessage: 'Failed to load chat history.' })
 }
 
 /**
@@ -194,14 +134,7 @@ export async function fetchChatSessions() {
  * @returns {Promise<{ id: string, status: string, started_at: string, title: string }>}
  */
 export async function startNewChatSession() {
-  const res = await fetch(`${API_BASE}/chat/sessions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  })
-  if (!res.ok) {
-    throw new Error('Failed to start a new chat session.')
-  }
-  return res.json()
+  return request('/chat/sessions', { method: 'POST', failureMessage: 'Failed to start a new chat session.' })
 }
 
 /**
@@ -210,11 +143,7 @@ export async function startNewChatSession() {
  * @returns {Promise<{ id: string, status: string, messages: Array<any>, can_confirm: boolean, complaint_ticket_id?: string, parliament?: string, dun?: string }>}
  */
 export async function fetchChatSessionDetail(sessionId) {
-  const res = await fetch(`${API_BASE}/chat/sessions/${sessionId}`)
-  if (!res.ok) {
-    throw new Error('Failed to load conversation details.')
-  }
-  return res.json()
+  return request(`/chat/sessions/${sessionId}`, { failureMessage: 'Failed to load conversation details.' })
 }
 
 /**
@@ -222,14 +151,5 @@ export async function fetchChatSessionDetail(sessionId) {
  * @param {string} sessionId
  */
 export async function deleteChatSession(sessionId) {
-  const res = await fetch(`${API_BASE}/chat/sessions/${sessionId}`, {
-    method: 'DELETE',
-  })
-  if (!res.ok) {
-    throw new Error('Failed to delete conversation.')
-  }
-  return res.json()
+  return request(`/chat/sessions/${sessionId}`, { method: 'DELETE', failureMessage: 'Failed to delete conversation.' })
 }
-
-
-
