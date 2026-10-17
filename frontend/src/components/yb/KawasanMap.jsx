@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map, NavigationControl, Popup } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { PIN_COLORS, pinColor } from "../../data/aduanPins";
+import { MAP_COLORS } from "../../data/chartColors";
 
 const norm = (kod) =>
   String(kod ?? "").trim().toUpperCase().replace(/^([PN])\s?0*(\d+)$/, "$1.$2").replace(/^([PN])(\d+)$/, "$1.$2");
@@ -42,7 +43,7 @@ export default function KawasanMap({ negeri, highlightKod, codeKey = "code_parli
     try {
       map = new Map({
         container: ref.current,
-        style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#f5f1e8" } }] },
+        style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": MAP_COLORS.background } }] },
         bounds: bboxOf(negeri),
         fitBoundsOptions: { padding: 24 },
         attributionControl: false,
@@ -72,10 +73,10 @@ export default function KawasanMap({ negeri, highlightKod, codeKey = "code_parli
       map.addSource("negeri", { type: "geojson", data: negeri });
       map.addSource("highlight", { type: "geojson", data: highlight });
       map.addSource("pins", { type: "geojson", data: pinFc });
-      map.addLayer({ id: "negeri-fill", type: "fill", source: "negeri", paint: { "fill-color": "#e3ddcc", "fill-opacity": 1 } });
-      map.addLayer({ id: "negeri-line", type: "line", source: "negeri", paint: { "line-color": "#a8a29e", "line-width": 1 } });
-      map.addLayer({ id: "hl-fill", type: "fill", source: "highlight", paint: { "fill-color": "#2563eb", "fill-opacity": 0.22 } });
-      map.addLayer({ id: "hl-line", type: "line", source: "highlight", paint: { "line-color": "#1d4ed8", "line-width": 2.5 } });
+      map.addLayer({ id: "negeri-fill", type: "fill", source: "negeri", paint: { "fill-color": MAP_COLORS.negeriFill, "fill-opacity": 1 } });
+      map.addLayer({ id: "negeri-line", type: "line", source: "negeri", paint: { "line-color": MAP_COLORS.negeriLine, "line-width": 1 } });
+      map.addLayer({ id: "hl-fill", type: "fill", source: "highlight", paint: { "fill-color": MAP_COLORS.highlightFill, "fill-opacity": 0.22 } });
+      map.addLayer({ id: "hl-line", type: "line", source: "highlight", paint: { "line-color": MAP_COLORS.highlightLine, "line-width": 2.5 } });
       map.addLayer({
         id: "pins",
         type: "circle",
@@ -83,7 +84,7 @@ export default function KawasanMap({ negeri, highlightKod, codeKey = "code_parli
         paint: {
           "circle-radius": 6,
           "circle-color": ["get", "color"],
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": MAP_COLORS.pinStroke,
           "circle-stroke-width": 1.5,
         },
       });

@@ -23,7 +23,7 @@ export default function DashboardShell({ sidebar, children }) {
           <IconButton label="Open menu" icon={Menu} onClick={() => setDrawerOpen(true)} />
         </div>
 
-        <aside className="hidden w-72 shrink-0 border-r border-line bg-[#fbfbfd] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto">
+        <aside className="hidden w-72 shrink-0 border-r border-line bg-paper-raised lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto">
           {sidebar}
         </aside>
 

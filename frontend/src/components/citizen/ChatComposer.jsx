@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, MapPin, Paperclip, X } from 'lucide-react'
 
+import InlineNotice from '../ui/InlineNotice'
 import { compressImageFile } from '../../utils/imageCompressor'
 
 const MAX_HEIGHT = 144
@@ -16,6 +17,7 @@ export default function ChatComposer({
   onAttachedImageChange = null,
 }) {
   const fileInputRef = useRef(null)
+  const [notice, setNotice] = useState('')
   const canSend = (value.trim().length > 0 || Boolean(attachedImage)) && !disabled
 
   useLayoutEffect(() => {
@@ -37,9 +39,10 @@ export default function ChatComposer({
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (e.g. JPG, PNG).')
+      setNotice('Please upload an image file (e.g. JPG, PNG).')
       return
     }
+    setNotice('')
     try {
       const compressedDataUri = await compressImageFile(file)
       onAttachedImageChange?.(compressedDataUri)
@@ -65,6 +68,8 @@ export default function ChatComposer({
         disabled ? 'opacity-80 bg-slate-50/50' : ''
       }`}
     >
+      <InlineNotice message={notice} onDismiss={() => setNotice('')} className="mb-2.5" />
+
       {/* Attached image preview */}
       {attachedImage && (
         <div className="relative mb-2.5 inline-flex items-center gap-2.5 rounded-2xl border border-line bg-canvas/70 p-1.5 pr-3 shadow-sm">

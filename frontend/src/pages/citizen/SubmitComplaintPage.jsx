@@ -30,6 +30,7 @@ import {
 import { compressImageFile } from '../../utils/imageCompressor'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import InlineNotice from '../../components/ui/InlineNotice'
 import LocationPickerModal from '../../components/citizen/LocationPickerModal'
 
 const DEFAULT_CATEGORIES = [
@@ -80,13 +81,16 @@ export default function SubmitComplaintPage() {
 
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [locatingCurrent, setLocatingCurrent] = useState(false)
+  const [locationNotice, setLocationNotice] = useState('')
+  const [imageNotice, setImageNotice] = useState('')
 
   const handleCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.')
+      setLocationNotice('Geolocation is not supported by your browser.')
       return
     }
 
+    setLocationNotice('')
     setLocatingCurrent(true)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -97,7 +101,7 @@ export default function SubmitComplaintPage() {
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
             { headers: { 'Accept-Language': 'ms, en' } },
           )
-          let placeName = 'Lokasi Semasa'
+          let placeName = 'Current location'
           if (res.ok) {
             const data = await res.json()
             const addr = data.address || {}
@@ -108,7 +112,7 @@ export default function SubmitComplaintPage() {
               addr.residential ||
               addr.building ||
               data.name ||
-              'Kawasan Kejadian'
+              'Incident area'
             const area = addr.suburb || addr.city || addr.town || ''
             placeName = area && area !== primary ? `${primary}, ${area}` : primary
           }
@@ -116,14 +120,14 @@ export default function SubmitComplaintPage() {
           const formatted = `${placeName} (${lat.toFixed(5)}, ${lng.toFixed(5)})`
           setLocation(formatted)
         } catch {
-          setLocation(`Lokasi Semasa (${lat.toFixed(5)}, ${lng.toFixed(5)})`)
+          setLocation(`Current location (${lat.toFixed(5)}, ${lng.toFixed(5)})`)
         } finally {
           setLocatingCurrent(false)
         }
       },
       (err) => {
         setLocatingCurrent(false)
-        alert(`Unable to get current location: ${err.message}`)
+        setLocationNotice(`Unable to get current location: ${err.message}`)
       },
       { enableHighAccuracy: true, timeout: 10000 },
     )
@@ -205,9 +209,10 @@ export default function SubmitComplaintPage() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (e.g. JPG, PNG, WEBP).')
+      setImageNotice('Please upload an image file (e.g. JPG, PNG, WEBP).')
       return
     }
+    setImageNotice('')
 
     try {
       const dataUri = await compressImageFile(file)
@@ -570,6 +575,7 @@ export default function SubmitComplaintPage() {
                 onChange={handleImageChange}
                 className="hidden"
               />
+              <InlineNotice message={imageNotice} onDismiss={() => setImageNotice('')} className="mt-3" />
 
               <div className="mt-3 flex-1 flex flex-col justify-center">
                 {!image ? (
@@ -792,6 +798,7 @@ export default function SubmitComplaintPage() {
           <p className="mt-1 text-xs text-muted sm:text-sm">
             Specify the street name, taman, landmark, or pin the exact spot on the map. Coordinates will automatically be attached.
           </p>
+          <InlineNotice message={locationNotice} onDismiss={() => setLocationNotice('')} className="mt-2" />
 
           <div className="mt-3">
             <input

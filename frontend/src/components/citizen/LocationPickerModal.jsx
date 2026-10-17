@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import Button from '../ui/Button'
+import InlineNotice from '../ui/InlineNotice'
 
 // Default center: Lembah Pantai, Kuala Lumpur
 const DEFAULT_CENTER = [3.1209, 101.6738]
@@ -20,8 +21,8 @@ const pinIcon = L.divIcon({
   className: 'wakil-map-pin',
   html: `
     <div style="transform: translate(-50%, -100%);">
-      <div style="background-color: #f0506e; width: 34px; height: 34px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2.5px solid #ffffff;">
-        <div style="width: 10px; height: 10px; background-color: #ffffff; border-radius: 50%; transform: rotate(45deg);"></div>
+      <div style="background-color: var(--color-accent-bright); width: 34px; height: 34px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2.5px solid var(--color-paper);">
+        <div style="width: 10px; height: 10px; background-color: var(--color-paper); border-radius: 50%; transform: rotate(45deg);"></div>
       </div>
       <div style="width: 14px; height: 6px; background-color: rgba(0,0,0,0.25); border-radius: 50%; margin: -4px auto 0; filter: blur(1.5px);"></div>
     </div>
@@ -66,6 +67,7 @@ export default function LocationPickerModal({
   const [searching, setSearching] = useState(false)
   const [searchResults, setSearchResults] = useState([])
   const [locatingCurrent, setLocatingCurrent] = useState(false)
+  const [notice, setNotice] = useState('')
 
   // Reverse geocoding via OpenStreetMap Nominatim
   const reverseGeocode = useCallback(async (lat, lng) => {
@@ -90,17 +92,17 @@ export default function LocationPickerModal({
           addr.residential ||
           addr.building ||
           data.name ||
-          'Kawasan Kejadian'
+          'Incident area'
 
         const area = addr.suburb || addr.city || addr.town || addr.state || ''
         const fullPlace = area && area !== primary ? `${primary}, ${area}` : primary
 
         setAddressName(fullPlace)
       } else {
-        setAddressName((prev) => prev || 'Lokasi Terpilih')
+        setAddressName((prev) => prev || 'Selected location')
       }
     } catch {
-      setAddressName((prev) => prev || 'Lokasi Terpilih')
+      setAddressName((prev) => prev || 'Selected location')
     } finally {
       setGeocoding(false)
     }
@@ -182,10 +184,11 @@ export default function LocationPickerModal({
   // Handle current location GPS
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.')
+      setNotice('Geolocation is not supported by your browser.')
       return
     }
 
+    setNotice('')
     setLocatingCurrent(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -202,7 +205,7 @@ export default function LocationPickerModal({
       },
       (err) => {
         setLocatingCurrent(false)
-        alert(`Unable to retrieve your location: ${err.message}`)
+        setNotice(`Unable to retrieve your location: ${err.message}`)
       },
       { enableHighAccuracy: true, timeout: 10000 },
     )
@@ -251,7 +254,7 @@ export default function LocationPickerModal({
 
   const handleConfirmLocation = () => {
     if (!coords) return
-    const name = addressName.trim() || 'Lokasi Terpilih'
+    const name = addressName.trim() || 'Selected location'
     // Format: "Taman Mawar (lat, long)"
     const formatted = `${name} (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`
     onConfirm({
@@ -346,6 +349,7 @@ export default function LocationPickerModal({
               )}
               <span>My Current Location</span>
             </button>
+            <InlineNotice message={notice} onDismiss={() => setNotice('')} />
           </div>
         </div>
 

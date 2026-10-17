@@ -1,7 +1,7 @@
 import { Droplet, Lightbulb, Trash2, TriangleAlert } from 'lucide-react'
 
 const categories = {
-  Roads: { icon: TriangleAlert, bg: 'bg-[#1e3a5f]' },
+  Roads: { icon: TriangleAlert, bg: 'bg-navy' },
   'Street lights': { icon: Lightbulb, bg: 'bg-accent' },
   Drainage: { icon: Droplet, bg: 'bg-brand' },
   Rubbish: { icon: Trash2, bg: 'bg-mint-dark' },

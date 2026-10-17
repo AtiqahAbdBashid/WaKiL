@@ -97,7 +97,7 @@ export default function PublicTopbar({ nav = [], tag, showLogin = false, showLan
               <p className="text-[11px] font-bold uppercase leading-tight tracking-widest text-ink">
                 Civic &amp; Service Centre Portal
               </p>
-              <p className={`text-sm leading-tight ${transparent ? 'text-[#474d6b]' : 'text-muted'}`}>
+              <p className={`text-sm leading-tight ${transparent ? 'text-ink-mid' : 'text-muted'}`}>
                 People&apos;s Voice, Representative&apos;s Mandate
               </p>
             </div>

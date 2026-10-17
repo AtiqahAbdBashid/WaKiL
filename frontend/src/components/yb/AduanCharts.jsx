@@ -6,14 +6,10 @@ import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContaine
 import Sheet from "../ui/Sheet";
 import { textLink } from "../ui/styles";
 import { useYbComplaints } from "../../context/YbComplaintsContext";
+import { PIN_COLORS as STATUS_COLORS } from "../../data/aduanPins";
+import { CATEGORY_COLORS } from "../../data/chartColors";
 import { parseStamp, ybStatuses } from "../../data/ybSample";
 
-const STATUS_COLORS = {
-  Pending: "#B45309",
-  "In Progress": "#1D4ED8",
-  Resolved: "#15803D",
-};
-const CATEGORY_COLORS = ["#1D4ED8", "#B45309", "#15803D", "#7F1D1B", "#6D28D9", "#0E7490", "#BE185D", "#4D7C0F", "#0F766E", "#C026D3", "#EA580C", "#475569", "#A16207"];
 
 const btn = (on) => `${textLink} min-h-11 px-3 text-sm ${on ? "font-extrabold underline" : ""}`;
 

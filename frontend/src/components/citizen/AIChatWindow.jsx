@@ -26,6 +26,7 @@ import {
   sendChatMessage,
 } from '../../services/chatApi'
 import Button from '../ui/Button'
+import InlineNotice from '../ui/InlineNotice'
 import Logo from '../ui/Logo'
 import ChatComposer from './ChatComposer'
 import LocationPickerModal from './LocationPickerModal'
@@ -42,11 +43,11 @@ function formatSessionDate(dateStr) {
 }
 
 const suggestions = [
-  'Ada jalan berlubang di Jalan Pantai Baharu',
-  'Lampu jalan padam di simpang taman perumahan',
-  'Longkang tersumbat dan air bertakung',
-  'Sampah tidak dikutip sejak minggu lepas',
-  'Bagaimanakah WaKiL berfungsi?',
+  'There is a pothole on Jalan Pantai Baharu',
+  'The street light is out at the housing estate junction',
+  'The drain is blocked and water is pooling',
+  'Rubbish has not been collected since last week',
+  'How does WaKiL work?',
 ]
 
 const firstName = citizenUser.name.split(' ')[0]
@@ -100,6 +101,7 @@ export default function AIChatWindow() {
   const lastImageRef = useRef(null)
 
   const [sessions, setSessions] = useState([])
+  const [historyNotice, setHistoryNotice] = useState('')
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
@@ -125,7 +127,7 @@ export default function AIChatWindow() {
 
   const handleMapConfirm = ({ formatted }) => {
     setPinnedLocation(formatted)
-    send(`Lokasi kejadian: ${formatted}`)
+    send(`Incident location: ${formatted}`)
   }
 
   const empty = flow.length === 0 && !loading
@@ -264,7 +266,7 @@ export default function AIChatWindow() {
 
       setFlow(loadedFlow)
     } catch (err) {
-      alert(`Failed to load conversation: ${err.message}`)
+      setHistoryNotice(`Failed to load conversation: ${err.message}`)
     } finally {
       setLoading(false)
     }
@@ -280,7 +282,7 @@ export default function AIChatWindow() {
         reset()
       }
     } catch (err) {
-      alert(`Failed to delete conversation: ${err.message}`)
+      setHistoryNotice(`Failed to delete conversation: ${err.message}`)
     }
   }
 
@@ -385,6 +387,8 @@ export default function AIChatWindow() {
                 New
               </button>
             </div>
+
+            <InlineNotice message={historyNotice} onDismiss={() => setHistoryNotice('')} className="m-2" />
 
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {loadingSessions ? (

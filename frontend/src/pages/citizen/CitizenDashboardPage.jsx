@@ -34,7 +34,7 @@ const quickChips = ['Submit a complaint', 'Check status', 'Guide']
 function HeroCard({ tone, tag, icon: Icon, title, text, cta, to, children }) {
   const bg =
     tone === 'accent'
-      ? 'bg-gradient-to-br from-[#f0506e] to-[#f77a92] shadow-glow-accent'
+      ? 'bg-gradient-to-br from-accent-bright to-accent-light shadow-glow-accent'
       : 'bg-gradient-to-br from-brand-dark to-brand shadow-glow-brand'
   return (
     <section className={`relative overflow-hidden rounded-3xl p-6 text-white ${bg} ${children ? 'sm:pr-36' : ''}`}>
@@ -148,9 +148,9 @@ export default function CitizenDashboardPage() {
         <div className="mt-3 flex flex-wrap gap-2">
           {quickChips.map((chip) => {
             const prompts = {
-              'Submit a complaint': 'Saya ingin membuat aduan baharu',
-              'Check status': 'Bagaimana cara semak status aduan saya?',
-              Guide: 'Bagaimanakah sistem WaKiL berfungsi?',
+              'Submit a complaint': 'I want to submit a new complaint',
+              'Check status': 'How do I check the status of my complaint?',
+              Guide: 'How does WaKiL work?',
             }
             return (
               <button
@@ -203,7 +203,7 @@ export default function CitizenDashboardPage() {
             aria-hidden="true"
             className="absolute right-6 top-1/2 hidden h-24 w-24 -translate-y-1/2 items-center justify-center rounded-3xl bg-white/90 sm:flex"
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#f0506e] to-[#f77a92] text-white shadow-glow-accent">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent-bright to-accent-light text-white shadow-glow-accent">
               <MessageCircle className="h-7 w-7" />
             </span>
           </span>
