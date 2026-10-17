@@ -62,27 +62,31 @@ def resolve_constituency_from_coords(
     return None, None
 
 
-def resolve_constituency(
-    location_str: Optional[str],
-) -> Tuple[Optional[str], Optional[str]]:
-    """Extract coordinates from location string and resolve (parliament, dun).
+_COORDS = re.compile(r"\(\s*([-+]?\d+(?:\.\d+)?)\s*,\s*([-+]?\d+(?:\.\d+)?)\s*\)")
 
-    Location string format typically includes '(lat, lng)', e.g. 'Taman Mawar (3.1209, 101.6738)'.
+
+def parse_coordinates(location_str: Optional[str]) -> Tuple[Optional[float], Optional[float]]:
+    """Extract (lat, lng) from a location string like 'Taman Mawar (3.1209, 101.6738)'.
+
+    Returns (None, None) when there is no pair or it is outside valid ranges.
     """
     if not location_str:
         return None, None
-
-    m = re.search(
-        r"\(\s*([-+]?\d+(?:\.\d+)?)\s*,\s*([-+]?\d+(?:\.\d+)?)\s*\)", location_str
-    )
+    m = _COORDS.search(location_str)
     if not m:
         return None, None
-
-    try:
-        lat = float(m.group(1))
-        lng = float(m.group(2))
-        return resolve_constituency_from_coords(lat, lng)
-    except Exception as e:
-        print(f"Error parsing coordinates from location '{location_str}': {e}")
+    lat, lng = float(m.group(1)), float(m.group(2))
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
         return None, None
+    return lat, lng
+
+
+def resolve_constituency(
+    location_str: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
+    """Extract coordinates from the location string and resolve (parliament, dun)."""
+    lat, lng = parse_coordinates(location_str)
+    if lat is None:
+        return None, None
+    return resolve_constituency_from_coords(lat, lng)
 

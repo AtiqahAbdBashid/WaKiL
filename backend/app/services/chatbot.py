@@ -14,17 +14,9 @@ def build_contents(
 ) -> list:
     contents = []
     for m in history:
-        role = "model" if m.role == "assistant" else "user"
-        parts = []
-        if m.content:
-            parts.append(types.Part(text=m.content))
-        img_url = getattr(m, "image_url", None)
-        if img_url:
-            img_part = make_image_part(img_url)
-            if img_part:
-                parts.append(img_part)
-        if parts:
-            contents.append(types.Content(role=role, parts=parts))
+        role = "model" if m.sender == "assistant" else "user"
+        if m.body:
+            contents.append(types.Content(role=role, parts=[types.Part(text=m.body)]))
 
     user_parts = []
     if message:

@@ -1,4 +1,3 @@
-import re
 import uuid
 from google.genai import types
 from google.genai.errors import ClientError
@@ -6,9 +5,9 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.prompts import CATEGORIES
-from app.services.duplicates import find_possible_duplicate
 from app.db import get_db
 from app.models import ChatSession, User
 from app.schemas import (
@@ -32,16 +31,16 @@ from app.services.chatbot import (
 )
 from app.services.gemini_client import extract_draft, classify, make_image_part
 from app.services.chat_store import (
+    get_session_complaint,
     create_chat_session,
     save_message,
     load_history,
-    complete_session,
     get_user_sessions,
     get_session_detail,
     delete_user_session,
 )
-from app.services.complaint_store import create_complaint, get_complaint_by_session
-from app.services.constituency import resolve_constituency
+from app.services.complaint_store import compose_body, create_complaint
+from app.services.constituency import resolve_constituency, resolve_constituency_from_coords
 from app.yb_portal.router import router as yb_portal_router
 
 
@@ -77,13 +76,14 @@ async def gemini_client_error_handler(request: Request, exc: ClientError):
     )
 
 
-TEST_USER_EMAIL = "test123@gmail.com"  # temporary, replaced by Firebase token verification in future
+# Temporary until Firebase token verification replaces it.
+TEST_USER_EMAIL = "test123@gmail.com"
 
 
 def get_current_user(db: Session = Depends(get_db)) -> User:
     user = db.scalar(select(User).where(User.email == TEST_USER_EMAIL))
     if user is None:
-        user = User(full_name="Citizen User", email=TEST_USER_EMAIL)
+        user = User(email=TEST_USER_EMAIL, profile="citizen")
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -111,10 +111,10 @@ def start_chat_session(
     chat = create_chat_session(db, user.id)
     return ChatSessionSummary(
         id=chat.id,
-        status=chat.status,
-        started_at=chat.started_at,
-        ended_at=chat.ended_at,
-        title="New Conversation",
+        status="active",
+        started_at=chat.created_at,
+        ended_at=None,
+        title=chat.title,
         preview="",
         message_count=0,
     )
@@ -161,9 +161,23 @@ def chat(
 
     history = load_history(db, session_id)
     reply, can_confirm = get_reply(req.message, history, image=req.image)
-    save_message(db, session_id, "user", req.message, image_url=req.image)
+    image = req.image.strip() if req.image and req.image.strip() else None
+    save_message(db, session_id, "user", req.message, image_url=image)
     save_message(db, session_id, "assistant", reply)
     return ChatResponse(reply=reply, session_id=session_id, can_confirm=can_confirm)
+
+
+def _confirm_response(complaint) -> ConfirmResponse:
+    parliament, dun = (None, None)
+    if complaint.latitude is not None:
+        parliament, dun = resolve_constituency_from_coords(complaint.latitude, complaint.longitude)
+    return ConfirmResponse(
+        ticket_id=str(complaint.id),
+        status=complaint.status,
+        parliament=parliament,
+        dun=dun,
+        image_url=complaint.attachment,
+    )
 
 
 @app.post("/chat/confirm", response_model=ConfirmResponse)
@@ -176,26 +190,25 @@ def confirm(
     if chat_session is None or chat_session.user_id != user.id:
         raise HTTPException(status_code=404, detail="Chat session not found")
 
-    existing = get_complaint_by_session(db, chat_session.id)
+    # A chat produces one complaint; confirming again returns it.
+    existing = get_session_complaint(db, chat_session.id)
     if existing is not None:
-        return ConfirmResponse(
-            ticket_id=existing.ticket_id,
-            status=existing.status,
-            parliament=existing.parliament,
-            dun=existing.dun,
-            image_url=existing.image_url,
-        )
+        return _confirm_response(existing)
 
     history = load_history(db, chat_session.id)
+    # Fall back to the photo saved with the chat when the client did not resend it.
+    image = req.image.strip() if req.image and req.image.strip() else None
+    image = image or next((m.image_url for m in reversed(history) if m.image_url), None)
     contents = build_contents(
         history,
         "Process the complaint described in the conversation above.",
+        image=image,
     )
     draft = extract_draft(contents)
     missing = get_missing_fields(draft)
 
-    # If location is provided in confirm request, consider location satisfied
-    if missing and "location" in missing and req.location and req.location.strip():
+    # A pinned location sent with the confirm request satisfies the location field.
+    if "location" in missing and req.location and req.location.strip():
         missing.remove("location")
 
     if missing:
@@ -203,64 +216,27 @@ def confirm(
             status_code=422, detail=f"Missing details: {', '.join(missing)}"
         )
 
-    # Determine final location, preserving exact latitude & longitude coordinates
-    final_location = (
-        req.location.strip()
-        if req.location and req.location.strip()
-        else (draft.location or "")
-    )
-    if final_location:
-        coord_match = None
-        for msg in reversed(history):
-            if msg.role == "user" and msg.content:
-                m = re.search(r"\([-+]?\d*\.?\d+,\s*[-+]?\d*\.?\d+\)", msg.content)
-                if m:
-                    coord_match = m.group(0)
-                    break
-        if coord_match and coord_match not in final_location:
-            final_location = f"{final_location} {coord_match}".strip()
-
-    final_image_url = req.image.strip() if req.image and req.image.strip() else None
-    if not final_image_url:
-        for msg in reversed(history):
-            if msg.role == "user" and getattr(msg, "image_url", None):
-                final_image_url = msg.image_url
-                break
-
-    parliament, dun = resolve_constituency(final_location)
+    location = req.location.strip() if req.location and req.location.strip() else draft.location
     result = finalize_complaint(contents)
-    complaint = create_complaint(
-        db,
-        chat_session.user_id,
-        chat_session.id,
-        draft.what_happened,
-        final_location,
-        draft.when,
-        result["category"],
-        result["priority"],
-        result["summary"],
-        result["confidence"],
-        result["manual_review"],
-        parliament=parliament,
-        dun=dun,
-        image_url=final_image_url,
-    )
     try:
-        match = find_possible_duplicate(db, complaint)
-        if match:
-            complaint.possible_duplicate_of = match.id
-            complaint.duplicate_review = "pending"
-            db.commit()
-    except Exception as e:
-        print("duplicate check skipped:", e)
-    complete_session(db, chat_session)
-    return ConfirmResponse(
-        ticket_id=complaint.ticket_id,
-        status=complaint.status,
-        parliament=complaint.parliament,
-        dun=complaint.dun,
-        image_url=complaint.image_url,
-    )
+        complaint = create_complaint(
+            db,
+            user.id,
+            result["category"],
+            result["summary"],
+            compose_body(draft.what_happened, location, draft.when),
+            attachment=image,
+            chat_session_id=chat_session.id,
+            location=location,
+        )
+    except IntegrityError:
+        # A concurrent confirm for the same chat won the unique chat_session_id.
+        db.rollback()
+        existing = get_session_complaint(db, chat_session.id)
+        if existing is None:
+            raise
+        return _confirm_response(existing)
+    return _confirm_response(complaint)
 
 
 @app.get("/complaints/categories")
@@ -326,8 +302,6 @@ def submit_complaint_form(
             detail="What happened, location, and when are all required.",
         )
 
-    chat_session = create_chat_session(db, user.id)
-
     complaint_text = (
         f"What happened: {req.what_happened}\nLocation: {req.location}\nWhen: {req.when}"
     )
@@ -337,12 +311,7 @@ def submit_complaint_form(
         if img_part:
             parts.append(img_part)
 
-    contents = [
-        types.Content(
-            role="user",
-            parts=parts,
-        )
-    ]
+    contents = [types.Content(role="user", parts=parts)]
 
     result = finalize_complaint(contents)
     final_category = (
@@ -354,42 +323,24 @@ def submit_complaint_form(
         else result["priority"]
     )
 
-    final_location = req.location.strip()
-    parliament, dun = resolve_constituency(final_location)
-
+    location = req.location.strip()
+    parliament, dun = resolve_constituency(location)
     complaint = create_complaint(
         db,
         user.id,
-        chat_session.id,
-        req.what_happened.strip(),
-        final_location,
-        req.when.strip(),
         final_category,
-        final_priority,
         result["summary"],
-        result["confidence"],
-        result["manual_review"],
+        compose_body(req.what_happened, location, req.when),
+        attachment=req.image,
+        location=location,
+    )
+    return ComplaintFormResponse(
+        ticket_id=str(complaint.id),
+        status=complaint.status,
+        category=final_category,
+        priority=final_priority,
+        summary=result["summary"],
         parliament=parliament,
         dun=dun,
-        image_url=req.image,
+        image_url=complaint.attachment,
     )
-    try:
-        match = find_possible_duplicate(db, complaint)
-        if match:
-            complaint.possible_duplicate_of = match.id
-            complaint.duplicate_review = "pending"
-            db.commit()
-    except Exception as e:
-        print("duplicate check skipped:", e)
-    complete_session(db, chat_session)
-    return ComplaintFormResponse(
-        ticket_id=complaint.ticket_id,
-        status=complaint.status,
-        category=complaint.category,
-        priority=complaint.priority,
-        summary=complaint.summary,
-        parliament=complaint.parliament,
-        dun=complaint.dun,
-        image_url=complaint.image_url,
-    )
-

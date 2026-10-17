@@ -7,8 +7,6 @@ ERD v3: the status vocabulary becomes the COMPLAINT.status CHECK, roles
 become USER.role, and the can_* helpers become application write guards.
 """
 
-from datetime import datetime, timezone
-
 # Lifecycle vocabulary for the COMPLAINT.status CHECK.
 STATUSES = ["Pending", "In Progress", "Resolved"]
 
@@ -24,35 +22,9 @@ def is_terminal_status(status: str) -> bool:
     return status == "Resolved"
 
 
-# Session guards: expired or deactivated staff lose access; their groups
-# return to the pool.
-def _parse_expiry(expires_at) -> datetime | None:
-    if not expires_at:
-        return None
-    if isinstance(expires_at, datetime):
-        dt = expires_at
-    else:
-        try:
-            dt = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
-        except ValueError:
-            return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
-
-
-def is_expired(staff: dict | None, now: datetime | None = None) -> bool:
-    if not staff or not staff.get("expiresAt"):
-        return False
-    now = now or datetime.now(timezone.utc)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
-    expiry = _parse_expiry(staff.get("expiresAt"))
-    return expiry is not None and expiry < now
-
-
-def has_access(staff: dict | None, now: datetime | None = None) -> bool:
-    return bool(staff) and bool(staff.get("active")) and not is_expired(staff, now)
+# Session guard: deactivated staff lose access and their groups return to the pool.
+def has_access(staff: dict | None) -> bool:
+    return bool(staff) and bool(staff.get("active"))
 
 
 # Triage permissions: who may change status, claim, resolve, manage staff.
