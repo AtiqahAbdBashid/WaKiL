@@ -35,7 +35,7 @@ export default function SmartEcosystemSection() {
       </ul>
 
       <div className="mx-auto w-full max-w-6xl">
-        <Reveal className="mt-24 rounded-3xl bg-brand lg:mt-32 p-8 text-white shadow-glow-brand sm:p-10">
+        <Reveal className="mt-24 rounded-3xl bg-brand lg:mt-32 p-8 text-white shadow-strong sm:p-10">
           <h3 className="text-2xl font-extrabold">From report to resolution</h3>
           <ol className="mt-8 grid gap-8 md:grid-cols-3">
             {ecosystemSteps.map(({ icon: Icon, title, text }, i) => (

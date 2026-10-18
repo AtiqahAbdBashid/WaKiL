@@ -4,7 +4,7 @@
   --color-brand: #2563eb;
   --color-brand-dark: #1d4ed8;
   --color-brand-soft: #ecf3ff;
-  --color-violet: #4f8cf7;
+  --color-yellow: #F2E863;
   --color-accent: #e8405e;
   --color-accent-dark: #b81d3b;
   --color-accent-soft: #ffe8ed;
@@ -28,6 +28,7 @@
   --color-brand-soft-hover: #dbe7ff;
   --color-ink-mid: #474d6b;
   --color-navy: #1e3a5f;
+  --color-mydigital: #0057b8;
 
   --radius-ticket: 6px;
 
@@ -36,6 +37,7 @@
   --shadow-card: 0 20px 60px -20px rgb(26 26 46 / 0.18);
   --shadow-glow-brand: 0 10px 24px -8px rgb(37 99 235 / 0.55);
   --shadow-glow-accent: 0 10px 24px -8px rgb(232 64 94 / 0.55);
+  --shadow-strong: 0 4px 10px rgb(26 26 46 / 0.25), 0 20px 40px -6px rgb(26 26 46 / 0.5);
   --shadow-lift: 0 24px 56px -20px rgb(26 26 46 / 0.3);
 }
 
@@ -87,10 +89,6 @@ body {
   transform-origin: 50% 0;
 }
 
-.chat-ring {
-  opacity: 0;
-}
-
 .lift {
   transition:
     translate 200ms ease,
@@ -134,14 +132,28 @@ body {
   }
 }
 
-@keyframes chat-ring {
-  from {
-    opacity: 0.45;
-    transform: scale(1);
-  }
+.bar-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.bar-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  transform: translateX(-100%);
+}
+
+@keyframes bar-shimmer {
   to {
-    opacity: 0;
-    transform: scale(1.8);
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pixel-bob {
+  50% {
+    transform: translateY(-4px);
   }
 }
 
@@ -158,8 +170,12 @@ body {
     animation: typing-dot 1.2s ease-in-out var(--d, 0ms) infinite;
   }
 
-  .chat-ring {
-    animation: chat-ring 1.8s ease-out 2.5s 3 backwards;
+  .bar-shimmer::after {
+    animation: bar-shimmer 2.2s ease-in-out var(--reveal-delay, 0ms) infinite;
+  }
+
+  .pixel-bob {
+    animation: pixel-bob 1.2s steps(2, jump-none) infinite;
   }
 
   .lift:hover {

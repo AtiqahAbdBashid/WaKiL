@@ -1,10 +1,7 @@
-import { ChevronDown } from 'lucide-react'
-
 import AboutSection from '../../components/landing/AboutSection'
 import SmartEcosystemSection from '../../components/landing/SmartEcosystemSection'
 import StatsSection from '../../components/landing/StatsSection'
 import klccHero from '../../assets/klcc-hero.jpg'
-import { scrollToSection } from '../../utils/scrollToSection'
 
 export default function LandingPage() {
   return (
@@ -34,26 +31,10 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="hero-rise mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-ink/80" style={{ '--d': '120ms' }}>
-            Connect citizen complaints directly to Service Centre through Artificial Intelligence and data-driven
-            analytics.
+            Connect citizen complaints directly to Service Centre through{' '}
+            <em className="font-semibold text-brand">Artificial Intelligence</em> and{' '}
+            <em className="font-semibold text-accent-dark">Data-Driven Analytics</em>.
           </p>
-          <p className="hero-rise mt-3 text-base font-semibold italic text-accent-dark" style={{ '--d': '180ms' }}>
-            Conversations that lead to real civic action.
-          </p>
-        </div>
-        <div className="absolute inset-x-0 bottom-8 flex justify-center">
-          <a
-            href="#smart-ecosystem"
-            onClick={(e) => {
-              e.preventDefault()
-              scrollToSection('smart-ecosystem')
-            }}
-            className="hero-rise inline-flex items-center gap-1 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-brand transition hover:bg-white focus-visible:outline-2 focus-visible:outline-brand motion-safe:active:scale-[0.97]"
-            style={{ '--d': '240ms' }}
-          >
-            See how it works
-            <ChevronDown className="h-4 w-4" aria-hidden="true" />
-          </a>
         </div>
       </section>
 

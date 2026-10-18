@@ -7,7 +7,7 @@ import SectionHeader from './SectionHeader'
 const categoryBars = {
   Roads: 'bg-brand',
   'Street lights': 'bg-accent',
-  Drainage: 'bg-violet',
+  Drainage: 'bg-yellow',
   Rubbish: 'bg-mint',
 }
 import { pilotStats, transparencyPoints } from '../../data/landingContent'
@@ -36,8 +36,7 @@ export default function StatsSection() {
           id="statistics-title"
           title="Open numbers, private people"
         >
-          What WaKiL reports publicly is aggregated. The figures below are sample data for the pilot, not real
-          complaints.
+          What WaKiL reports publicly is aggregated.
         </SectionHeader>
 
         <dl className="mt-12 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -45,7 +44,7 @@ export default function StatsSection() {
             <Reveal
               key={tile.label}
               delay={i * 80}
-              className="rounded-3xl border border-line bg-canvas/60 p-5 sm:p-6"
+              className="rounded-3xl border border-line bg-canvas/60 p-5 shadow-strong sm:p-6"
             >
               <dt className="text-sm font-medium text-muted">{tile.label}</dt>
               <dd className="mt-2 text-4xl font-extrabold tracking-tight text-ink">
@@ -57,11 +56,8 @@ export default function StatsSection() {
         </dl>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-5">
-          <Reveal className="rounded-3xl border border-line p-6 sm:p-8 lg:col-span-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xl font-bold text-ink">Complaints by category</h3>
-              <span className="text-sm text-muted">Pilot · sample data</span>
-            </div>
+          <Reveal className="lift rounded-3xl border-2 border-ink/30 p-6 sm:p-8 lg:col-span-3">
+            <h3 className="text-xl font-bold text-ink">Complaints by category</h3>
             <ul className="mt-6 space-y-5">
               {categories.map((c, i) => (
                 <li key={c.name}>
@@ -75,7 +71,7 @@ export default function StatsSection() {
                     <Reveal
                       effect="grow"
                       delay={150 + i * 100}
-                      className={`h-full rounded-full ${categoryBars[c.name]}`}
+                      className={`bar-shimmer h-full rounded-full ${categoryBars[c.name]}`}
                       style={{ width: `${(c.count / maxCount) * 100}%` }}
                     />
                   </div>

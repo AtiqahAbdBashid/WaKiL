@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MessageCircle } from 'lucide-react'
+import PixelMp from './PixelMp'
 
 export default function FloatingChat() {
   return (
@@ -16,19 +16,14 @@ export default function FloatingChat() {
           className="absolute right-0 top-[calc(100%-1px)] h-3 w-7 bg-inherit [clip-path:polygon(0_0,40%_0,100%_100%)]"
         />
       </Link>
-      <div className="relative">
-        <span
-          aria-hidden="true"
-          className="chat-ring pointer-events-none absolute inset-0 rounded-full bg-mint"
-        />
-        <Link
-          to="/citizen/wakil-ai"
-          aria-label="Chat with WaKiL AI"
-          className="relative flex h-16 w-16 items-center justify-center rounded-full bg-mint-dark text-white shadow-card transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:active:scale-95"
-        >
-          <MessageCircle className="h-7 w-7" aria-hidden="true" />
-        </Link>
-      </div>
+      <Link
+        to="/citizen/wakil-ai"
+        aria-label="Chat with WaKiL AI"
+        className="group relative flex w-20 flex-col items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+      >
+        <PixelMp className="pixel-bob h-[85px] w-20 transition-transform group-hover:-translate-y-1 motion-safe:group-active:scale-95" />
+        <span aria-hidden="true" className="-mt-1 h-2 w-14 rounded-full bg-ink/20" />
+      </Link>
     </div>
   )
 }
