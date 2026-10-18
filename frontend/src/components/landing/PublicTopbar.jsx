@@ -1,0 +1,129 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ChevronDown, User } from 'lucide-react'
+
+import Button from '../ui/Button'
+import Logo from '../ui/Logo'
+import { useCitizenLogin } from '../../context/useCitizenLogin'
+import { useScrolled } from '../../hooks/usePageScroll'
+
+function LoginMenu() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const buttonRef = useRef(null)
+  const { openCitizenLogin } = useCitizenLogin()
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onPointer = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      buttonRef.current?.focus()
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        ref={buttonRef}
+        variant="outline"
+        className="whitespace-nowrap !rounded-lg !px-3 !py-2 motion-safe:active:scale-[0.97] sm:!px-5"
+        aria-expanded={open}
+        aria-controls="login-options"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <User className="h-4 w-4" aria-hidden="true" />
+        Log In
+        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      {open && (
+        <div
+          id="login-options"
+          className="absolute right-0 top-full z-30 mt-2 w-64 rounded-2xl border border-line bg-white p-2 shadow-card"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              openCitizenLogin()
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+          >
+            <span className="block text-sm font-semibold text-ink">Citizen Portal</span>
+            <span className="block text-xs text-muted">Submit and track complaints</span>
+          </button>
+          <Link
+            to="/yb/login"
+            className="block rounded-xl px-4 py-3 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+          >
+            <span className="block text-sm font-semibold text-ink">YB Portal</span>
+            <span className="block text-xs text-muted">For representatives and office staff</span>
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function PublicTopbar({ nav = [], tag, showLogin = false, transparent = false }) {
+  const scrolled = useScrolled()
+
+  const headerClass = transparent
+    ? `sticky top-0 z-30 border-b transition-colors duration-200 ${
+        scrolled ? 'border-line bg-white/80 backdrop-blur-md' : 'border-transparent'
+      }`
+    : 'relative z-20 border-b border-line bg-white'
+
+  return (
+    <header className={headerClass}>
+      <div
+        className={`flex h-24 items-center justify-between gap-6 px-4 sm:px-6 ${
+          nav.length > 0 ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : ''
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <Logo className="h-12" />
+          {tag !== 'YB PORTAL' && (
+            <div className="hidden whitespace-nowrap border-l border-line pl-4 md:block">
+              <p className="text-[11px] font-bold uppercase leading-tight tracking-widest text-ink">
+                Civic &amp; Service Centre Portal
+              </p>
+              <p className={`text-sm leading-tight ${transparent ? 'text-ink-mid' : 'text-muted'}`}>
+                People&apos;s Voice, Representative&apos;s Mandate
+              </p>
+            </div>
+          )}
+        </div>
+
+        {nav.length > 0 && (
+          <nav aria-label="Main" className="hidden items-center gap-8 whitespace-nowrap text-[15px] font-medium xl:flex">
+            {/* TODO: the citizen login nav links have no target pages yet */}
+            {nav.map((item) => (
+              <a
+                key={item.label}
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                className="relative py-1 text-ink after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-brand after:content-[''] after:transition-transform after:duration-200 hover:after:scale-x-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand focus-visible:after:scale-x-100 motion-reduce:after:transition-none"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        )}
+
+        <div className="flex items-center gap-3 xl:justify-self-end">
+          {showLogin && <LoginMenu />}
+        </div>
+      </div>
+    </header>
+  )
+}

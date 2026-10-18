@@ -86,3 +86,64 @@ If `main` has changed while you were working, update your branch before pushing:
 | 7 | Wait for review/approval, then merge | GitLab website |
 
 **Golden rule:** never commit or push directly to `main`. Always work on your own branch and merge via a Merge Request.
+
+## Run the project locally
+
+You need **Node.js 20+**, **Python 3.12.7**, **[uv](https://docs.astral.sh/uv/)** and **PostgreSQL** (a local install or a Docker container). Run the backend and the frontend in two separate terminals.
+
+### Backend (FastAPI, port 8000)
+
+First time only:
+
+```powershell
+cd backend
+uv venv                                   # creates .venv using the Python version in .python-version (3.12.7)
+uv pip install -r requirements.txt        # installs the dependencies
+copy .env.example .env                    # then open .env and fill in the values
+```
+
+In `.env`, set `GEMINI_API_KEY`, `DATABASE_URL` (your Postgres database, e.g. `wakil`) and, so staff stay signed in across restarts, `STAFF_TOKEN_SECRET`. See the comments in `.env.example`.
+
+Create the tables and add the starter data (staff accounts, one demo citizen):
+
+```powershell
+# create an empty database called "wakil" first, then load the schema
+psql -U postgres -d wakil -f sql/schema.sql
+.venv\Scripts\python.exe scripts\seed.py
+```
+
+Start the server (from `backend/`):
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+Check it at <http://localhost:8000/health> (should show `{"status":"healthy"}`). API docs are at <http://localhost:8000/docs>. The server takes a few seconds to start answering.
+
+The map boundary files are already in `backend/app/data`. To rebuild them, run `python scripts/ingest_kawasan.py` from `backend/`.
+
+### Frontend (React + Vite, port 5173)
+
+First time only:
+
+```powershell
+cd frontend
+npm install
+copy .env.example .env      # optional in development
+```
+
+Start it:
+
+```powershell
+npm run dev
+```
+
+Open <http://localhost:5173>. The dev server forwards `/api` requests to the backend on port 8000, so start the backend first.
+
+Other commands (from `frontend/`): `npm run lint` checks the code and `npm run build` makes a production build.
+
+### Sign-in during development
+
+- **YB portal** (`/yb/login`): sign in with a seeded staff email, such as `yb.khairul@parlimen.gov.my`. The password is not checked yet.
+- **Citizen portal:** the login popup on the home page is a placeholder and goes straight to the dashboard.
+
