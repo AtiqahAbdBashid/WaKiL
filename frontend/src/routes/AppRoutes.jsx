@@ -5,7 +5,6 @@ import PublicLayout from '../layouts/PublicLayout'
 import YbLayout from '../layouts/YbLayout'
 
 import LandingPage from '../pages/landing/LandingPage'
-import CitizenLoginPage from '../pages/auth/CitizenLoginPage'
 import YbLoginPage from '../pages/auth/YbLoginPage'
 
 import CitizenDashboardPage from '../pages/citizen/CitizenDashboardPage'
@@ -32,7 +31,7 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
-        <Route path="citizen/login" element={<CitizenLoginPage />} />
+        <Route path="citizen/login" element={<Navigate to="/" replace />} />
         <Route path="yb/login" element={<YbLoginPage />} />
       </Route>
 

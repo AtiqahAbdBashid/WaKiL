@@ -2,13 +2,17 @@ import { Link } from 'react-router-dom'
 
 import Button from '../ui/Button'
 import Reveal from '../ui/Reveal'
+import { useCitizenLogin } from '../../context/useCitizenLogin'
 import aboutCelebration from '../../assets/about-celebration.png'
 
 export default function AboutSection() {
+  const { openCitizenLogin } = useCitizenLogin()
+
   return (
-    <section id="about" aria-labelledby="about-title" className="blueprint flex min-h-[calc(100svh-6rem)] flex-col justify-center px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto w-full max-w-[96rem]">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+    <section id="about" aria-labelledby="about-title" className="blueprint flex min-h-[calc(100svh-6rem)] flex-col px-4 pt-20 sm:px-6 lg:pt-28">
+      <div className="mx-auto flex w-full max-w-[96rem] flex-1 flex-col">
+        <div className="flex flex-1 items-center pb-12">
+        <div className="grid w-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <Reveal delay={150} className="order-2 lg:order-1">
             <img
               src={aboutCelebration}
@@ -32,8 +36,7 @@ export default function AboutSection() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button
-                  as={Link}
-                  to="/citizen/login"
+                  onClick={openCitizenLogin}
                   variant="soft"
                   size="lg"
                   className="focus-visible:outline-white! motion-safe:active:scale-[0.97]"
@@ -53,8 +56,9 @@ export default function AboutSection() {
             </Reveal>
           </div>
         </div>
+        </div>
 
-        <p className="mt-16 border-t border-white/20 pt-6 text-center text-sm text-blue-50">
+        <p className="border-t border-white/20 py-6 text-center text-sm text-blue-50">
           © 2026 WaKiL. All rights reserved.
         </p>
       </div>

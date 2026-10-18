@@ -2,9 +2,9 @@
 // field is not sent yet; passwords arrive with real office auth (OAuth).
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 
-import Button from '../../components/ui/Button'
+import { brandSolidButton } from '../../components/ui/styles'
 import IconButton from '../../components/ui/IconButton'
 import TextField from '../../components/ui/TextField'
 import { ybApi } from '../../lib/ybApi'
@@ -35,10 +35,10 @@ export default function YbLoginPage() {
     <div className="flex flex-1 items-center justify-center px-5 py-16">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-[30.5rem] rounded-3xl bg-white p-8 shadow-card sm:p-10"
+        className="w-full max-w-[30.5rem] rounded-3xl border-2 border-brand bg-white p-8 shadow-card sm:p-10"
       >
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink">YB Office Sign In</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">Office Sign In</h1>
           <p className="mt-2 text-base text-muted">Sign in with your official office account.</p>
         </div>
 
@@ -87,15 +87,11 @@ export default function YbLoginPage() {
           </p>
         )}
 
-        <Button type="submit" size="lg" className="mt-6 w-full" disabled={submitting}>
-          Sign in <ArrowRight className="h-5 w-5" aria-hidden="true" />
-        </Button>
+        <button type="submit" className={`${brandSolidButton} mt-6`} disabled={submitting}>
+          Sign in
+        </button>
 
         <div className="mt-6 space-y-3 border-t border-line pt-6 text-sm text-muted">
-          <p className="flex items-start gap-2">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            Access is limited to authorised YB office staff. All sign-ins are logged.
-          </p>
           <p className="text-center">
             No account?{' '}
             <a href="#" onClick={(e) => e.preventDefault()} className="font-semibold text-brand hover:underline">

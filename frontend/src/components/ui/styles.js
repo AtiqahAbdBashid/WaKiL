@@ -14,3 +14,11 @@ export const secondaryButton =
 
 export const textLink =
   "font-bold text-brand underline decoration-2 underline-offset-4 hover:text-brand-deep";
+
+// White button with a MyDigital-blue outline, shared by the login popup buttons.
+export const mydigitalButton =
+  "flex min-h-12 w-full items-center justify-center gap-3 rounded-md border-2 border-mydigital bg-white px-4 py-2 text-base font-medium text-mydigital transition hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mydigital motion-safe:active:scale-[0.98]";
+
+// Solid primary-blue twin of mydigitalButton, for the login popup's main action.
+export const brandSolidButton =
+  "flex min-h-12 w-full items-center justify-center gap-3 rounded-md border-2 border-brand bg-brand px-4 py-2 text-base font-medium text-white transition hover:border-brand-dark hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]";

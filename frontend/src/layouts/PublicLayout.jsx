@@ -1,6 +1,7 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 
 import FloatingChat from '../components/landing/FloatingChat'
+import { CitizenLoginProvider } from '../context/CitizenLoginProvider'
 import PublicTopbar from '../components/landing/PublicTopbar'
 
 const variants = {
@@ -22,12 +23,8 @@ const variants = {
   },
   yb: {
     tag: 'YB PORTAL',
-    showLanguage: false,
-    footer: 'centered',
-    blobs: [
-      'left-[10%] top-[-10%] h-[32rem] w-[32rem] bg-brand/15',
-      'left-[-5%] bottom-[-5%] h-[30rem] w-[30rem] bg-accent/10',
-    ],
+    bg: 'bg-white',
+    blobs: [],
   },
 }
 
@@ -39,16 +36,6 @@ function pickVariant(pathname) {
 
 function Footer({ mode }) {
   if (!mode) return null
-  if (mode === 'centered') {
-    return (
-      <footer className="relative z-10 py-8 text-center text-sm text-muted">
-        © 2026 WaKiL. All rights reserved. ·{' '}
-        <Link to="/" className="hover:text-brand">
-          Privacy Policy
-        </Link>
-      </footer>
-    )
-  }
   return (
     <footer className="relative z-10 border-t border-line bg-white/80">
       <div className="flex flex-wrap items-center justify-between gap-3 py-6 pl-4 pr-24 text-sm text-muted sm:pl-6 sm:pr-80">
@@ -74,7 +61,8 @@ export default function PublicLayout() {
   const v = pickVariant(pathname)
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-clip bg-canvas">
+    <CitizenLoginProvider>
+    <div className={`relative flex min-h-screen flex-col overflow-clip ${v.bg ?? 'bg-canvas'}`}>
       <a
         href="#main"
         className="sr-only rounded-full bg-white px-5 py-3 font-semibold text-brand shadow-card focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus-visible:outline-2 focus-visible:outline-brand"
@@ -88,7 +76,6 @@ export default function PublicLayout() {
         nav={v.nav}
         tag={v.tag}
         showLogin={v.showLogin}
-        showLanguage={v.showLanguage}
         transparent={v.photo}
       />
       <main id="main" className="relative z-10 flex flex-1 flex-col">
@@ -97,5 +84,6 @@ export default function PublicLayout() {
       <Footer mode={v.footer} />
       {v.chat && <FloatingChat />}
     </div>
+    </CitizenLoginProvider>
   )
 }

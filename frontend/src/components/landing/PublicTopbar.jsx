@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, User } from 'lucide-react'
 
-import Badge from '../ui/Badge'
 import Button from '../ui/Button'
-import LanguageToggle from '../ui/LanguageToggle'
 import Logo from '../ui/Logo'
+import { useCitizenLogin } from '../../context/useCitizenLogin'
 import { useScrolled } from '../../hooks/usePageScroll'
 
 function LoginMenu() {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const buttonRef = useRef(null)
+  const { openCitizenLogin } = useCitizenLogin()
 
   useEffect(() => {
     if (!open) return undefined
@@ -36,7 +36,7 @@ function LoginMenu() {
       <Button
         ref={buttonRef}
         variant="outline"
-        className="whitespace-nowrap !px-3 motion-safe:active:scale-[0.97] sm:!px-5"
+        className="whitespace-nowrap !rounded-lg !px-3 !py-2 motion-safe:active:scale-[0.97] sm:!px-5"
         aria-expanded={open}
         aria-controls="login-options"
         onClick={() => setOpen((o) => !o)}
@@ -50,13 +50,17 @@ function LoginMenu() {
           id="login-options"
           className="absolute right-0 top-full z-30 mt-2 w-64 rounded-2xl border border-line bg-white p-2 shadow-card"
         >
-          <Link
-            to="/citizen/login"
-            className="block rounded-xl px-4 py-3 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              openCitizenLogin()
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
           >
             <span className="block text-sm font-semibold text-ink">Citizen Portal</span>
             <span className="block text-xs text-muted">Submit and track complaints</span>
-          </Link>
+          </button>
           <Link
             to="/yb/login"
             className="block rounded-xl px-4 py-3 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
@@ -70,7 +74,7 @@ function LoginMenu() {
   )
 }
 
-export default function PublicTopbar({ nav = [], tag, showLogin = false, showLanguage = true, transparent = false }) {
+export default function PublicTopbar({ nav = [], tag, showLogin = false, transparent = false }) {
   const scrolled = useScrolled()
 
   const headerClass = transparent
@@ -88,11 +92,7 @@ export default function PublicTopbar({ nav = [], tag, showLogin = false, showLan
       >
         <div className="flex items-center gap-4">
           <Logo className="h-12" />
-          {tag === 'YB PORTAL' ? (
-            <Badge tone="brand" caps>
-              YB Portal
-            </Badge>
-          ) : (
+          {tag !== 'YB PORTAL' && (
             <div className="hidden whitespace-nowrap border-l border-line pl-4 md:block">
               <p className="text-[11px] font-bold uppercase leading-tight tracking-widest text-ink">
                 Civic &amp; Service Centre Portal
@@ -121,7 +121,6 @@ export default function PublicTopbar({ nav = [], tag, showLogin = false, showLan
         )}
 
         <div className="flex items-center gap-3 xl:justify-self-end">
-          {showLanguage && <LanguageToggle translucent={transparent} />}
           {showLogin && <LoginMenu />}
         </div>
       </div>
