@@ -89,7 +89,7 @@ If `main` has changed while you were working, update your branch before pushing:
 
 ## Run the project locally
 
-You need **Node.js 20+**, **Python 3.12**, **[uv](https://docs.astral.sh/uv/)** and **PostgreSQL** (a local install or a Docker container). Run the backend and the frontend in two separate terminals.
+You need **Node.js 20+**, **Python 3.12.7**, **[uv](https://docs.astral.sh/uv/)** and **PostgreSQL** (a local install or a Docker container). Run the backend and the frontend in two separate terminals.
 
 ### Backend (FastAPI, port 8000)
 
@@ -97,7 +97,7 @@ First time only:
 
 ```powershell
 cd backend
-uv venv                                   # creates .venv
+uv venv                                   # creates .venv using the Python version in .python-version (3.12.7)
 uv pip install -r requirements.txt        # installs the dependencies
 copy .env.example .env                    # then open .env and fill in the values
 ```
