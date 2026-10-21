@@ -1,5 +1,3 @@
-from app.db import engine
-from app.models import Base
+from app.db import init_db
 
-Base.metadata.create_all(engine)
-print("tables created")
+print("tables created" if init_db() else "tables already exist")
