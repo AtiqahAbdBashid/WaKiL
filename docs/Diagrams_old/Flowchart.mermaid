@@ -1,0 +1,134 @@
+flowchart TB
+
+    EXT[External Link / Social Media] -->|Temporary Session| H
+
+    subgraph RAKYAT["Rakyat Home"]
+        A[Rakyat]
+        B[Login WaKiL]
+        C[Authorised with MyDigitalID]
+        D{DUN Setup?}
+        E[Malaysia Map]
+        F[Registered DUN]
+        G["Home"]
+        
+        A --> B --> C --> D 
+        D -->|Yes| E --> F --> G
+    end
+
+    D -->|No| G
+    G --> H
+    G --> AA
+    G --> AO
+
+    subgraph CHAT["AI Chat"]
+        H[AI Conversation]
+        I{AI determine purpose}
+        J[Question about news/parliament / Survey]
+        L[Report an Issue]
+        M{More Information Needed?}
+        N[AI Follow-up]
+        O{Create Report?}
+        P[End Chat Session]
+        Q{Temporary Session?}
+
+        H --> I
+        I --> J
+        I --> L
+        J --> M
+        L --> M
+        M -->|Yes| N --> H
+        M -->|No| P
+        L --> O
+        O -->|No| P
+        O -->|Yes| Q
+        Q -->|Yes| C
+    end
+    
+    Q -->|No| R
+
+    subgraph REPORT["Report Creation"]
+        R[AI Analyzes Conversation]
+        S{Location Needed?}
+        T[AI Determines DUNs]
+        U[Use Registered DUN]
+        V[Generate Report Draft]
+        W[Citizen Reviews / Confirms]
+        X{Confirmed?}
+        Y[Submit Report]
+        Z[Public Reported Issue]
+
+        R --> S
+        S -->|Yes| T
+        S -->|No| U
+        T --> V
+        U --> V
+        V --> W
+        W --> X
+
+        X -->|Yes| Y
+        Y --> Z
+    end
+
+    Z --> AA
+    Z --> AG
+    Z --> AO
+    X -->|No| M
+
+    subgraph COMMUNITY["Public Community"]
+        AA[Browse Public Issues by DUN]
+        AB[View Report]
+        AC[Likes and Comments]
+        AD[Citizen Private Chat]
+
+        AA --> AB --> AC --> AD
+    end
+
+    subgraph REPRESENTATIVE["Representative / ADUN"]
+        AE[Representative Login]
+        AF[Representative Dashboard]
+        AG[View Report / AI Summary Statistics]
+        AH[Original Conversation]
+        AI{Join Conversation?}
+        AJ[Conversation With Rakyat]
+        AK[AI Monitoring Conversation]
+        AL{Allow AI Participation?}
+        AM[AI Supporting Representative]
+        AN( )
+
+        AE --> AF --> AG --> AH --> AI
+        AI -->|No| AN
+        AI -->|Yes| AJ
+        AJ --> AK --> AL
+        AL -->|Yes| AM
+        AL -->|No| AN
+        AM --> AN
+    end
+
+    AN --> AO
+    AF --> AU
+
+    subgraph STATUS["Report Status"]
+        AO[Report Status]
+        AP[Submitted]
+        AQ[Under Review]
+        AR[In Progress]
+        AS[Rejected]
+        AT[Resolved]
+
+        AO --> AP
+        AP --> AQ
+        AQ --> AS
+        AQ --> AR
+        AR --> AT
+    end
+
+    subgraph ANNOUNCEMENT["Representative Announcements"]
+        AU[Create Announcement]
+        AV[News / Survey / Discussion]
+        AW[Public Announcement]
+
+        AU --> AV
+        AV --> AW
+    end
+
+    AW --> H

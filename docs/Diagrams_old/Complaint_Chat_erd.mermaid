@@ -1,0 +1,72 @@
+erDiagram
+    CONSTITUENCY {
+        string kod
+        string level
+        string name
+        string state
+        string dun
+        string geojsonRef
+    }
+    CITIZEN {
+        string id
+        string name
+        string email
+        string address
+        string mydigital_nric
+    }
+    STAFF {
+        string id
+        string name
+        string role
+        string email
+        bool active
+        Date expiresAt
+        string service_center_id
+    }
+    SERVICE_CENTER {
+        int id
+        string name
+        string address
+        string constituency_kod
+    }
+    COMPLAINT {
+        int id
+        string ref_no
+        string title
+        str body
+        datetime time_of_occurrence
+        string category
+        Date date
+        Date updatedAt
+        string status
+        string citizen_id
+        bool needsRepresentativeAttention
+        string lokasi_geojson
+        string case_group_id
+        string case_group_title
+        string owner_staff_id
+    }
+    COMPLAINT_UPDATE {
+        int complaint_id
+        string by
+        Date at
+        string action
+        string detail
+    }
+    CHAT_HISTORY {
+        int id
+        string citizen_id
+        string messages
+        int complaint_id
+        Date closed_at
+    }
+
+    CITIZEN ||--o{ COMPLAINT : submits
+    CITIZEN ||--o{ CHAT_HISTORY : owns
+    STAFF ||--o{ COMPLAINT_UPDATE : writes
+    STAFF ||--o{ COMPLAINT : owns
+    SERVICE_CENTER ||--o{ STAFF : employs
+    CONSTITUENCY ||--o{ SERVICE_CENTER : contains
+    CONSTITUENCY ||--o{ COMPLAINT : spatial
+    COMPLAINT ||--o{ COMPLAINT_UPDATE : includes
+    COMPLAINT ||--o| CHAT_HISTORY : links
