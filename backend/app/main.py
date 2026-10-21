@@ -47,9 +47,9 @@ from app.yb_portal.router import router as yb_portal_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Creates the tables on first start against an empty database.
+    # Creates the tables and loads the mock data on first start against an empty database.
     if init_db():
-        print("Database was empty: loaded sql/schema.sql")
+        print("Database was empty: loaded sql/schema.sql and scripts/wakil_mock_500.sql")
     yield
 
 
