@@ -34,7 +34,7 @@ CREATE TABLE users (
 );
 
 -- Rejects rows whose user_id is set to a non-staff user.
-CREATE FUNCTION require_staff_author() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION require_staff_author() RETURNS trigger AS $$
 BEGIN
     IF NEW.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users WHERE id = NEW.user_id AND profile = 'staff') THEN
         RAISE EXCEPTION 'user_id must reference a staff user';

@@ -1,0 +1,56 @@
+erDiagram
+    USERS {
+        uuid id PK
+        varchar full_name
+        varchar email UK
+        timestamptz created_at
+    }
+
+    CHAT_SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        varchar status
+        timestamptz started_at
+        timestamptz ended_at
+    }
+
+    CHAT_MESSAGES {
+        uuid id PK
+        uuid session_id FK
+        varchar role
+        text content
+        timestamptz created_at
+        text image_url
+    }
+
+    COMPLAINTS {
+        uuid id PK
+        varchar ticket_id UK
+        uuid user_id FK
+        uuid session_id FK
+        text what_happened
+        varchar location
+        varchar when_text
+        varchar category
+        varchar priority
+        text summary
+        double confidence
+        boolean manual_review
+        varchar status
+        timestamptz created_at
+        uuid possible_duplicate_of FK
+        uuid duplicate_of FK
+        varchar duplicate_review
+        varchar dun
+        varchar parliament
+        text image_url
+    }
+
+    USERS ||--o{ CHAT_SESSIONS : "has"
+    CHAT_SESSIONS ||--o{ CHAT_MESSAGES : "contains"
+
+    USERS ||--o{ COMPLAINTS : "creates"
+    CHAT_SESSIONS ||--o{ COMPLAINTS : "creates"
+
+    COMPLAINTS ||--o| COMPLAINTS : "possible duplicate"
+    COMPLAINTS ||--o| COMPLAINTS : "duplicate of"
