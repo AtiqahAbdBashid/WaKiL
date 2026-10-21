@@ -1,5 +1,4 @@
 import uuid
-from contextlib import asynccontextmanager
 from google.genai import types
 from google.genai.errors import ClientError
 from fastapi import FastAPI, HTTPException, Depends, Request
@@ -9,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.prompts import CATEGORIES
-from app.db import get_db, init_db
+from app.db import get_db
 from app.models import ChatSession, User
 from app.schemas import (
     ChatRequest,
@@ -45,15 +44,7 @@ from app.services.constituency import resolve_constituency, resolve_constituency
 from app.yb_portal.router import router as yb_portal_router
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Creates the tables on first start against an empty database.
-    if init_db():
-        print("Database was empty: loaded sql/schema.sql")
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 app.include_router(yb_portal_router)
 
