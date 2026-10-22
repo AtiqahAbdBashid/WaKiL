@@ -1,6 +1,6 @@
 import { Loader2, Sparkles } from 'lucide-react'
 
-export default function AiSuggestionPanel({ aiSuggesting, aiSuggestion, aiError, image, category, whatHappened, onApplyCategory, onUseSummary }) {
+export default function AiSuggestionPanel({ aiSuggesting, aiSuggestion, aiError, image, whatHappened, onUseSummary }) {
   return (
     <div className="mt-2">
       {aiSuggesting && (
@@ -31,38 +31,52 @@ export default function AiSuggestionPanel({ aiSuggesting, aiSuggestion, aiError,
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted">
-                Confidence: {Math.round((aiSuggestion.confidence || 0.9) * 100)}%
-              </span>
-              <button
-                type="button"
-                onClick={() => onApplyCategory(aiSuggestion.category)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm ${
-                  category === aiSuggestion.category
-                    ? 'bg-mint-dark text-white'
-                    : 'bg-brand text-white hover:bg-brand-dark'
-                }`}
-              >
-                {category === aiSuggestion.category ? 'Applied ✓' : 'Use Category'}
-              </button>
-            </div>
+            <span className="text-xs font-semibold text-muted">
+              Confidence: {Math.round((aiSuggestion.confidence || 0.9) * 100)}%
+            </span>
           </div>
 
-          {aiSuggestion.summary && (
-            <div className="mt-3 border-t border-line/40 pt-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <p className="text-xs text-ink/80">
-                <strong className="font-semibold text-ink">AI Suggested Summary:</strong> &ldquo;{aiSuggestion.summary}&rdquo; · Priority:{' '}
-                <span className="font-bold text-ink">{aiSuggestion.priority}</span>
-              </p>
-              {whatHappened !== aiSuggestion.summary && (
-                <button
-                  type="button"
-                  onClick={() => onUseSummary(aiSuggestion.summary)}
-                  className="self-start sm:self-auto rounded-lg bg-brand/10 hover:bg-brand/20 px-2.5 py-1 text-xs font-bold text-brand transition"
-                >
-                  Use AI Summary
-                </button>
+          {aiSuggestion.secondary_categories?.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-line/40 pt-3" aria-label="Other suitable categories">
+              {aiSuggestion.secondary_categories.map((item) => (
+                <span key={item} className="rounded-full border border-brand/20 bg-white/80 px-2.5 py-1 text-xs font-medium text-brand">
+                  #{item.replaceAll(' ', '')}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {(aiSuggestion.summary || aiSuggestion.summary_tip) && (
+            <div className="mt-3 border-t border-line/40 pt-3">
+              {aiSuggestion.summary && (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-wide text-ink">Suggested stronger explanation</p>
+                  <p className="mt-1 text-sm leading-6 text-ink/85">{aiSuggestion.summary}</p>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs leading-5 text-muted">
+                      Use this as a guide and keep only details you know to be accurate.
+                    </p>
+                    {whatHappened !== aiSuggestion.summary && (
+                      <button
+                        type="button"
+                        onClick={() => onUseSummary?.(aiSuggestion.summary)}
+                        className="rounded-lg bg-brand/10 px-2.5 py-1.5 text-xs font-bold text-brand transition hover:bg-brand/20"
+                      >
+                        Use suggested description
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              {aiSuggestion.summary_tip && (
+                <p className="mt-2 rounded-xl border border-brand/15 bg-white/80 px-3 py-2 text-xs leading-5 text-brand-dark">
+                  <strong>Helpful detail to add:</strong> {aiSuggestion.summary_tip}
+                </p>
+              )}
+              {aiSuggestion.priority && (
+                <p className="mt-2 text-xs text-muted">
+                  Suggested priority: <span className="font-bold text-ink">{aiSuggestion.priority}</span>
+                </p>
               )}
             </div>
           )}

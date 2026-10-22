@@ -63,9 +63,9 @@ export async function confirmComplaint(sessionId, location = null, image = null)
 }
 
 /**
- * Request Gemini AI to suggest a category, priority, and summary for a complaint description and/or image.
+ * Request Gemini AI to suggest primary/secondary categories, priority, and summary for a complaint description and/or image.
  * @param {{ summary?: string, location?: string, when?: string, image?: string }} params
- * @returns {Promise<{ category: string, priority: string, confidence: number, summary: string }>}
+ * @returns {Promise<{ category: string, secondary_categories: string[], priority: string, confidence: number, summary: string, summary_tip: string }>}
  */
 export async function suggestCategory({ summary = '', location = '', when = '', image = null }) {
   if ((!summary || !summary.trim()) && !image) {
@@ -85,9 +85,9 @@ export async function suggestCategory({ summary = '', location = '', when = '', 
 }
 
 /**
- * Submit a complaint form directly with summary, location, when, and category.
- * @param {{ what_happened: string, location: string, when: string, category?: string, priority?: string }} data
- * @returns {Promise<{ ticket_id: string, status: string, category: string, priority: string, summary: string }>}
+ * Submit a complaint form with the AI-selected category list.
+ * @param {{ what_happened: string, location: string, when: string, category: string, categories: string[], priority?: string, photo_exception_reason?: string|null }} data
+ * @returns {Promise<{ ticket_id: string, status: string, category: string, categories: string[], priority: string, summary: string, manual_review_required: boolean }>}
  */
 export async function submitComplaintForm(data) {
   return request('/complaints', { method: 'POST', body: data, failureMessage: 'Failed to submit complaint.' })
@@ -111,14 +111,28 @@ export async function fetchCategories() {
   }
 
   return [
-    'Infrastructure/Roads',
-    'Drainage & Flood',
-    'Waste & Sanitation',
+    'Roads & Infrastructure',
+    'Flooding & Drainage',
+    'Welfare & Assistance',
+    'Housing',
+    'Employment & Economy',
+    'Healthcare',
+    'Education',
     'Public Safety',
-    'Utilities',
-    'Welfare & Aid',
-    'Others',
+    'Cleanliness & Environment',
+    'Transportation',
+    'Government Services',
+    'Community Issues',
+    'Other',
   ]
+}
+
+/** Fetch only the current citizen's complaints and public status timeline. */
+export async function fetchMyComplaints() {
+  const data = await request('/complaints/mine', {
+    failureMessage: 'Unable to load your complaints right now.',
+  })
+  return Array.isArray(data.complaints) ? data.complaints : []
 }
 
 /**

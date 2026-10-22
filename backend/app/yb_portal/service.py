@@ -22,10 +22,11 @@ from app.models import (
     ServiceCenter,
     User,
 )
+from app.prompts import CATEGORIES
 
 from .kawasan import feature_contains, load_geo
 
-FALLBACK_CATEGORY = "Others"
+FALLBACK_CATEGORY = "Other"
 GROUP_STATUS = "Open"
 
 
@@ -120,7 +121,8 @@ def add_update(db: Session, complaint_id, staff_id, action: str, detail: str) ->
 
 
 def list_categories(db: Session) -> list[str]:
-    return list(db.scalars(select(Category.name).order_by(Category.name)))
+    existing = set(db.scalars(select(Category.name).where(Category.name.in_(CATEGORIES))))
+    return [category for category in CATEGORIES if category in existing]
 
 
 def list_service_centers(db: Session) -> list[dict]:
@@ -200,6 +202,7 @@ def _complaint_views(db: Session, complaints: list[Complaint]) -> list[dict]:
             "title": c.title,
             "body": c.body,
             "category": categories.get(c.category_id, FALLBACK_CATEGORY),
+            "categories": [categories.get(c.category_id, FALLBACK_CATEGORY), *(c.secondary_categories or [])],
             "locality": None,
             "constituency_kod": None,
             "citizen_id": str(c.user_id),
@@ -211,6 +214,8 @@ def _complaint_views(db: Session, complaints: list[Complaint]) -> list[dict]:
             "updatedAt": (history[c.id][-1]["at"] if history[c.id] else c.created_at.isoformat())[:10],
             "status": c.status,
             "needsRepresentativeAttention": c.rep_attention,
+            "manualReviewRequired": bool(c.photo_exception_reason),
+            "photoEvidenceException": c.photo_exception_reason,
             "lokasi_geojson": None,
             "lat": c.latitude,
             "lng": c.longitude,

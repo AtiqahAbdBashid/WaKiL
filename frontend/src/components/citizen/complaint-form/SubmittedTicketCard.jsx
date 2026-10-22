@@ -68,6 +68,15 @@ export default function SubmittedTicketCard({ submittedTicket, image, onReset })
                 <dd className="mt-1 font-semibold text-ink">
                   {submittedTicket.category}
                 </dd>
+                {submittedTicket.categories?.length > 1 && (
+                  <dd className="mt-2 flex flex-wrap gap-1.5">
+                    {submittedTicket.categories.slice(1).map((category) => (
+                      <span key={category} className="rounded-full border border-brand/20 bg-brand-soft/40 px-2 py-0.5 text-xs font-medium text-brand">
+                        #{category.replaceAll(' ', '')}
+                      </span>
+                    ))}
+                  </dd>
+                )}
               </div>
               <div>
                 <dt className="text-xs text-muted">Priority</dt>
@@ -92,6 +101,12 @@ export default function SubmittedTicketCard({ submittedTicket, image, onReset })
                 </div>
               )}
             </dl>
+
+            {submittedTicket.manual_review_required && (
+              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+                Your report was submitted and flagged for manual review because photo evidence was marked as {({ unavailable: 'unavailable', unsafe: 'unsafe to take', sensitive: 'sensitive', not_verifiable: 'not reasonably verifiable in a photo' })[submittedTicket.photo_exception_reason] || 'unavailable'}.
+              </p>
+            )}
 
             {(submittedTicket.image_url || image) && (
               <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-canvas/40 p-3">
@@ -124,8 +139,8 @@ export default function SubmittedTicketCard({ submittedTicket, image, onReset })
                 this incident.
               </li>
               <li>
-                You can monitor status changes, officer comments, and repair
-                milestones in <strong>My Complaints</strong>.
+                You can monitor status changes and progress milestones in{' '}
+                <strong>My Complaints</strong>.
               </li>
             </ul>
           </div>

@@ -5,13 +5,19 @@ import { citizenNavItems } from '../../data/citizenNav'
 import { citizenUser } from '../../data/citizenMock'
 import Button from '../ui/Button'
 import SidebarNav from '../dashboard/SidebarNav'
+import { useCitizenNotifications } from '../../context/CitizenNotificationContext'
 
 export default function CitizenSidebar() {
+  const { unreadCount } = useCitizenNotifications()
+  const items = citizenNavItems.map((item) =>
+    item.to === '/citizen/notifikasi' ? { ...item, count: unreadCount } : item,
+  )
+
   return (
     <SidebarNav
       tagline="Community voice, real action"
       user={citizenUser}
-      items={citizenNavItems}
+      items={items}
       footer={
         <>
           <Button as={Link} to="/citizen/hantar-aduan" variant="danger" size="lg" className="w-full">

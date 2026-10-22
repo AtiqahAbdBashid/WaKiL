@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
+    ARRAY,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -106,6 +107,10 @@ class Complaint(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     category_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("categories.id"))
+    secondary_categories: Mapped[list[str]] = mapped_column(
+        ARRAY(String), nullable=False, server_default=text("'{}'")
+    )
+    photo_exception_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
     case_group_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("case_groups.id"), nullable=True
     )

@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
 from uuid import UUID
 
@@ -18,9 +18,10 @@ class ComplaintDraft(BaseModel):
 
 class Classification(BaseModel):
     priority: Literal["Low", "Medium", "High"]
-    category: str  # e.g. Infrastructure, Drainage & Flood, ...
-    priority: str  # "Low", "Medium" or "High"
+    category: str  # One of the canonical categories in app.prompts.CATEGORIES.
+    secondary_categories: list[str] = Field(default_factory=list)
     summary: str
+    summary_tip: str = ""
     confidence: float  # a number from 0 to 1
 
 
@@ -60,9 +61,11 @@ class SuggestCategoryRequest(BaseModel):
 
 class SuggestCategoryResponse(BaseModel):
     category: str
+    secondary_categories: list[str] = Field(default_factory=list)
     priority: str
     confidence: float
     summary: str
+    summary_tip: str = ""
 
 
 class ComplaintFormRequest(BaseModel):
@@ -70,19 +73,24 @@ class ComplaintFormRequest(BaseModel):
     location: str
     when: str
     category: str | None = None
+    categories: list[str] = Field(default_factory=list)
     priority: str | None = None
     image: str | None = None
+    photo_exception_reason: Literal["unavailable", "unsafe", "sensitive", "not_verifiable"] | None = None
 
 
 class ComplaintFormResponse(BaseModel):
     ticket_id: str
     status: str
     category: str
+    categories: list[str] = Field(default_factory=list)
     priority: str
     summary: str
     parliament: str | None = None
     dun: str | None = None
     image_url: str | None = None
+    manual_review_required: bool = False
+    photo_exception_reason: str | None = None
 
 
 class ChatMessageOut(BaseModel):

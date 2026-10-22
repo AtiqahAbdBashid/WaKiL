@@ -74,6 +74,8 @@ CREATE TABLE complaints (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         uuid NOT NULL REFERENCES users (id),
     category_id     uuid NOT NULL REFERENCES categories (id),
+    secondary_categories text[] NOT NULL DEFAULT '{}',
+    photo_exception_reason varchar(20),
     case_group_id   uuid REFERENCES case_groups (id),
     chat_session_id uuid UNIQUE REFERENCES chat_sessions (id) ON DELETE SET NULL,
     title           varchar(200) NOT NULL,

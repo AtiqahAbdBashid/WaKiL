@@ -2,7 +2,7 @@ import { Crosshair, Loader2, Map, MapPin } from 'lucide-react'
 import { useCurrentLocation } from '../../../hooks/useCurrentLocation'
 import InlineNotice from '../../ui/InlineNotice'
 
-const QUICK_LOCATIONS = ['Lembah Pantai', 'Bangsar', 'Pantai Dalam', 'Kerinchi']
+const QUICK_LOCATIONS = ['Bukit Gasing', 'Seremban', 'Muar', 'Puteri Wangsa', 'Taman Tun Dr Ismail', 'Kota Damansara', 'Bukit Jalil', 'Puchong', 'Cheras', 'Shah Alam']
 
 export default function LocationField({ location, onChange, onOpenMap }) {
   const { locate, locating, notice, clearNotice } = useCurrentLocation(onChange)

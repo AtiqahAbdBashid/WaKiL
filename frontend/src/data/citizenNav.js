@@ -5,6 +5,6 @@ export const citizenNavItems = [
   { label: 'Submit Complaint', to: '/citizen/hantar-aduan', icon: PlusCircle },
   { label: 'My Complaints', to: '/citizen/aduan-saya', icon: ClipboardList },
   { label: 'WaKiL AI', to: '/citizen/wakil-ai', icon: MessageCircle, badge: 'Smart' },
-  { label: 'Notifications', to: '/citizen/notifikasi', icon: Bell, count: 3 },
+  { label: 'Notifications', to: '/citizen/notifikasi', icon: Bell },
   { label: 'My Profile', to: '/citizen/profil', icon: User },
 ]

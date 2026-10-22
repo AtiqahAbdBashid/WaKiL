@@ -73,9 +73,23 @@ export default function ComplaintDetailDialog({
             <p className="tabular text-xs font-semibold text-accent-ink">Ruj. {formatDisplayRef(c)}</p>
             <h2 id="aduan-dialog-title" className="mt-0.5 text-lg font-extrabold text-ink">{c.title}</h2>
             <p className="mt-1 text-sm text-ink-soft">{[c.category, c.locality].filter(Boolean).join(" · ")}</p>
+            {c.categories?.length > 1 && (
+              <div className="mt-2 flex flex-wrap gap-1.5" aria-label="AI-selected categories">
+                {c.categories.slice(1).map((category) => (
+                  <span key={category} className="rounded-full border border-brand/20 bg-brand-soft/40 px-2 py-0.5 text-xs font-medium text-brand">
+                    #{category.replaceAll(" ", "")}
+                  </span>
+                ))}
+              </div>
+            )}
             {c.needsRepresentativeAttention && (
               <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
                 Flagged for Representative review
+              </p>
+            )}
+            {c.manualReviewRequired && (
+              <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+                Manual review requested: {({ unavailable: 'photo unavailable', unsafe: 'taking a photo was unsafe', sensitive: 'the issue involves sensitive personal information', not_verifiable: 'the issue cannot reasonably be verified in a photo' })[c.photoEvidenceException] || 'photo evidence was not provided'}.
               </p>
             )}
           </div>

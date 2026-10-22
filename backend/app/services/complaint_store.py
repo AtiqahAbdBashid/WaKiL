@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models import Category, Complaint
 from app.services.constituency import parse_coordinates
 
-FALLBACK_CATEGORY = "Others"
+FALLBACK_CATEGORY = "Other"
 TITLE_MAX = 200
 
 
@@ -37,11 +37,15 @@ def create_complaint(
     attachment: str | None = None,
     chat_session_id=None,
     location: str | None = None,
+    secondary_categories: list[str] | None = None,
+    photo_exception_reason: str | None = None,
 ) -> Complaint:
     latitude, longitude = parse_coordinates(location)
     complaint = Complaint(
         user_id=user_id,
         category_id=get_category_id(db, category),
+        secondary_categories=secondary_categories or [],
+        photo_exception_reason=photo_exception_reason,
         chat_session_id=chat_session_id,
         title=title.strip()[:TITLE_MAX],
         body=body,

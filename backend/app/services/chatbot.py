@@ -80,7 +80,7 @@ def build_instruction(missing: list[str]) -> str:
 def apply_fallback(result: Classification) -> tuple[Classification, bool]:
     manual_review = False
     if result.confidence < CONFIDENCE_THRESHOLD or result.category not in CATEGORIES:
-        result.category = "Others"
+        result.category = "Other"
         manual_review = True
     return result, manual_review
 

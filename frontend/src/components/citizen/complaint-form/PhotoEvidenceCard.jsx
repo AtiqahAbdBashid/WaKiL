@@ -2,8 +2,18 @@ import { useRef } from 'react'
 import { Camera, UploadCloud, X } from 'lucide-react'
 import InlineNotice from '../../ui/InlineNotice'
 
-export default function PhotoEvidenceCard({ image, notice, onDismissNotice, onFileChange, onRemove }) {
+export default function PhotoEvidenceCard({
+  image,
+  notice,
+  requirement = 'optional',
+  exceptionReason = '',
+  onExceptionReasonChange,
+  onDismissNotice,
+  onFileChange,
+  onRemove,
+}) {
   const fileInputRef = useRef(null)
+  const isRequired = requirement === 'required'
 
   return (
     <section className="flex flex-col justify-between rounded-3xl border border-line bg-white p-5 shadow-sm sm:p-7">
@@ -12,14 +22,20 @@ export default function PhotoEvidenceCard({ image, notice, onDismissNotice, onFi
           <label className="text-base font-bold text-ink sm:text-lg flex items-center gap-2">
             <Camera className="h-5 w-5 text-brand" />
             <span>2. Photo Evidence</span>
-            <span className="text-xs font-normal text-muted">(Optional)</span>
+            <span className={`text-xs font-semibold ${isRequired ? 'text-rose-600' : 'text-muted'}`}>
+              ({isRequired ? 'Required for this category' : requirement === 'recommended' ? 'Recommended' : 'Optional'})
+            </span>
           </label>
           <span className="text-xs font-semibold text-brand bg-brand-soft px-2.5 py-0.5 rounded-full">
             Gemini Vision
           </span>
         </div>
         <p className="mt-1 text-xs text-muted sm:text-sm">
-          Upload a photo first or after describing. Gemini will auto-generate the issue summary &amp; category.
+          {isRequired
+            ? 'A photo helps verify this type of issue. If you cannot provide one, select the reason below to request manual review.'
+            : requirement === 'recommended'
+              ? 'A photo can help explain this issue, but you can submit without one.'
+              : 'A photo is optional. Upload one if it can help explain the issue.'}
         </p>
       </div>
 
@@ -31,6 +47,29 @@ export default function PhotoEvidenceCard({ image, notice, onDismissNotice, onFi
         className="hidden"
       />
       <InlineNotice message={notice} onDismiss={onDismissNotice} className="mt-3" />
+
+      {isRequired && !image && (
+        <div className="mt-3">
+          <label htmlFor="photo-exception" className="mb-1.5 block text-sm font-semibold text-ink">
+            If you cannot provide a photo, tell us why
+          </label>
+          <select
+            id="photo-exception"
+            value={exceptionReason}
+            onChange={(event) => onExceptionReasonChange(event.target.value)}
+            className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+          >
+            <option value="">Choose a reason to request manual review</option>
+            <option value="unavailable">Photo unavailable</option>
+            <option value="unsafe">Taking a photo would be unsafe</option>
+            <option value="sensitive">The issue involves sensitive personal information</option>
+            <option value="not_verifiable">The issue cannot reasonably be verified in a photo</option>
+          </select>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            Your report can still be submitted and will be marked for manual review.
+          </p>
+        </div>
+      )}
 
       <div className="mt-3 flex-1 flex flex-col justify-center">
         {!image ? (

@@ -41,6 +41,34 @@
   --shadow-lift: 0 24px 56px -20px rgb(26 26 46 / 0.3);
 }
 
+.citizen-theme {
+  --color-brand: #19a7a8;
+  --color-brand-dark: #138182;
+  --color-brand-soft: color-mix(in srgb, #19a7a8 12%, white);
+  --color-brand-deep: #16324f;
+  --color-brand-tint: color-mix(in srgb, #19a7a8 12%, white);
+  --color-brand-soft-hover: color-mix(in srgb, #19a7a8 20%, white);
+  --color-accent: #16324f;
+  --color-accent-dark: #102539;
+  --color-accent-soft: color-mix(in srgb, #16324f 10%, white);
+  --color-accent-ink: #16324f;
+  --color-accent-bright: #16324f;
+  --color-accent-light: #294765;
+  --color-canvas: #ffffff;
+  --color-ink: #16324f;
+  --color-ink-mid: #344b61;
+  --color-ink-soft: #40566a;
+  --color-muted: #40566a;
+  --color-line: color-mix(in srgb, #16324f 18%, white);
+  --color-line-ink: color-mix(in srgb, #16324f 38%, white);
+  --color-paper: #ffffff;
+  --color-paper-raised: #ffffff;
+  --color-paper-sunk: color-mix(in srgb, #16324f 4%, white);
+  --color-navy: #16324f;
+  --shadow-glow-brand: 0 10px 24px -8px rgb(25 167 168 / 0.35);
+  --shadow-glow-accent: 0 10px 24px -8px rgb(22 50 79 / 0.3);
+}
+
 html,
 body,
 #root {

@@ -1,4 +1,5 @@
 import uuid
+import re
 from contextlib import asynccontextmanager
 from google.genai import types
 from google.genai.errors import ClientError
@@ -8,9 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.prompts import CATEGORIES
+from app.prompts import CATEGORIES, PHOTO_REQUIRED_CATEGORIES
 from app.db import get_db, init_db
-from app.models import ChatSession, User
+from app.models import Category, ChatSession, Complaint, ComplaintUpdate, User
 from app.schemas import (
     ChatRequest,
     ChatResponse,
@@ -61,6 +62,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -253,6 +256,86 @@ def get_categories():
     return {"categories": CATEGORIES}
 
 
+@app.get("/complaints/mine")
+def list_my_complaints(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return a citizen-safe view of the signed-in citizen's complaints.
+
+    Only lifecycle status changes are exposed. Staff notes, case groups,
+    assignments, representative flags, and staff identities stay private.
+    """
+    rows = db.execute(
+        select(Complaint, Category.name)
+        .join(Category, Complaint.category_id == Category.id)
+        .where(Complaint.user_id == user.id)
+        .order_by(Complaint.created_at.desc())
+    ).all()
+    complaint_ids = [complaint.id for complaint, _ in rows]
+    updates_by_complaint: dict[uuid.UUID, list[ComplaintUpdate]] = {}
+    if complaint_ids:
+        updates = db.scalars(
+            select(ComplaintUpdate)
+            .where(ComplaintUpdate.complaint_id.in_(complaint_ids))
+            .order_by(ComplaintUpdate.created_at)
+        )
+        for update in updates:
+            # Never return staff-authored freeform notes or internal workflow actions.
+            match = re.match(r"^\[(status|resolve|group-assign)\]", update.body)
+            if match:
+                updates_by_complaint.setdefault(update.complaint_id, []).append(update)
+
+    def status_label(status: str) -> str:
+        return {
+            "Pending": "Submitted",
+            "In Progress": "In progress",
+            "Resolved": "Resolved",
+        }.get(status, "Status updated")
+
+    complaints = []
+    for complaint, category in rows:
+        timeline = [{"status": "Pending", "label": "Submitted", "at": complaint.created_at.isoformat()}]
+        for update in updates_by_complaint.get(complaint.id, []):
+            if update.body.startswith("[resolve]"):
+                next_status = "Resolved"
+            elif update.body.startswith("[group-assign]"):
+                # Claiming a pending complaint moves it to In Progress.
+                next_status = "In Progress" if timeline[-1]["status"] == "Pending" else timeline[-1]["status"]
+            else:
+                match = re.search(r"→\s*(Pending|In Progress|Resolved)\s*$", update.body)
+                if not match:
+                    continue
+                next_status = match.group(1)
+            if timeline[-1]["status"] != next_status:
+                timeline.append({
+                    "status": next_status,
+                    "label": status_label(next_status),
+                    "at": update.created_at.isoformat(),
+                })
+        if timeline[-1]["status"] != complaint.status:
+            last_status_update = updates_by_complaint.get(complaint.id, [])
+            timeline.append({
+                "status": complaint.status,
+                "label": status_label(complaint.status),
+                "at": (
+                    last_status_update[-1].created_at.isoformat()
+                    if last_status_update
+                    else complaint.created_at.isoformat()
+                ),
+            })
+        complaints.append({
+            "id": str(complaint.id),
+            "title": complaint.title,
+            "category": category,
+            "categories": [category, *(complaint.secondary_categories or [])],
+            "status": complaint.status,
+            "created_at": complaint.created_at.isoformat(),
+            "timeline": timeline,
+        })
+    return {"complaints": complaints}
+
+
 @app.post("/complaints/suggest-category", response_model=SuggestCategoryResponse)
 def suggest_category(req: SuggestCategoryRequest):
     has_summary = bool(req.summary and req.summary.strip())
@@ -293,9 +376,14 @@ def suggest_category(req: SuggestCategoryRequest):
     result, _ = apply_fallback(result)
     return SuggestCategoryResponse(
         category=result.category,
+        secondary_categories=[
+            category for category in dict.fromkeys(result.secondary_categories)
+            if category in CATEGORIES and category != result.category
+        ],
         priority=result.priority,
         confidence=result.confidence,
         summary=result.summary,
+        summary_tip=result.summary_tip,
     )
 
 
@@ -326,6 +414,21 @@ def submit_complaint_form(
     final_category = (
         req.category if req.category and req.category in CATEGORIES else result["category"]
     )
+    ai_categories = [
+        category for category in dict.fromkeys(req.categories)
+        if category in CATEGORIES
+    ]
+    if final_category not in ai_categories:
+        ai_categories.insert(0, final_category)
+    needs_photo = any(category in PHOTO_REQUIRED_CATEGORIES for category in ai_categories)
+    photo_exception_reason = None
+    if needs_photo and not req.image:
+        photo_exception_reason = req.photo_exception_reason
+        if not photo_exception_reason:
+            raise HTTPException(
+                status_code=422,
+                detail="Photo evidence is required for this category. If a photo is unavailable, unsafe to take, or sensitive, select an exception reason.",
+            )
     final_priority = (
         req.priority
         if req.priority and req.priority in ["Low", "Medium", "High"]
@@ -342,14 +445,19 @@ def submit_complaint_form(
         compose_body(req.what_happened, location, req.when),
         attachment=req.image,
         location=location,
+        secondary_categories=[category for category in ai_categories if category != final_category],
+        photo_exception_reason=photo_exception_reason,
     )
     return ComplaintFormResponse(
         ticket_id=str(complaint.id),
         status=complaint.status,
         category=final_category,
+        categories=ai_categories,
         priority=final_priority,
         summary=result["summary"],
         parliament=parliament,
         dun=dun,
         image_url=complaint.attachment,
+        manual_review_required=bool(photo_exception_reason),
+        photo_exception_reason=photo_exception_reason,
     )
