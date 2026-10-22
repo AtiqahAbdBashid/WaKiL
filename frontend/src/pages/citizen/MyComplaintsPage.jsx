@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, ArrowRight, ChevronDown, ClipboardList, Loader2, Search, Sparkles } from 'lucide-react'
+import { AlertCircle, ArrowRight, ChevronDown, ClipboardList, Loader2, Search, Sparkles, Trash2 } from 'lucide-react'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import PageTitle from '../../components/ui/PageTitle'
-import { fetchMyComplaints } from '../../services/chatApi'
+import { deleteMyComplaint, fetchMyComplaints } from '../../services/chatApi'
+import { useCitizenNotifications } from '../../context/CitizenNotificationContext'
 
 const filters = [
   { value: 'All', label: 'All complaints' },
@@ -25,25 +26,30 @@ function shortId(id) {
   return id ? id.replaceAll('-', '').slice(0, 8).toUpperCase() : '—'
 }
 
-function ComplaintCard({ complaint, expanded, onToggle }) {
+function ComplaintCard({ complaint, expanded, onToggle, onDelete, deleting }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const timeline = complaint.timeline || []
+  const canDelete = complaint.status === 'Pending'
 
   return (
     <article className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
       <button
-        type="button"
-        aria-expanded={expanded}
-        onClick={onToggle}
-        className="w-full p-4 text-left transition hover:bg-canvas/60 focus-visible:outline-2 focus-visible:outline-brand sm:p-5"
-      >
-        <div className="flex items-start gap-3">
+          type="button"
+          aria-expanded={expanded}
+          onClick={onToggle}
+          className="flex w-full items-start gap-3 p-4 text-left transition hover:bg-canvas/60 focus-visible:outline-2 focus-visible:outline-brand sm:p-5"
+        >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
             <ClipboardList className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="min-w-0 flex-1 text-base font-bold text-ink">{complaint.title}</h2>
-              <Badge>{complaint.status}</Badge>
+              <Badge
+                tone={complaint.status === 'Pending' ? 'warning' : complaint.status === 'In Progress' ? 'info' : undefined}
+              >
+                {complaint.status}
+              </Badge>
             </div>
             <p className="mt-1 text-xs text-muted">Ticket #{shortId(complaint.id)} · Submitted {formatDate(complaint.created_at)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -58,7 +64,6 @@ function ComplaintCard({ complaint, expanded, onToggle }) {
               </span>
             </div>
           </div>
-        </div>
       </button>
 
       {expanded && (
@@ -85,6 +90,46 @@ function ComplaintCard({ complaint, expanded, onToggle }) {
           </p>
         </div>
       )}
+
+      {canDelete && (
+        <div className="flex justify-end border-t border-line px-4 py-2.5 sm:px-5">
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete((current) => !current)}
+            disabled={deleting}
+            aria-label={`Delete submitted complaint ${shortId(complaint.id)}`}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete complaint
+          </button>
+        </div>
+      )}
+
+      {confirmingDelete && canDelete && (
+        <div className="flex flex-col gap-3 border-t border-line bg-canvas/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p className="text-sm text-ink">Delete this submitted complaint? This cannot be undone.</p>
+          <div className="flex shrink-0 justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+              className="min-h-9 rounded-lg px-3 text-xs font-semibold text-muted hover:bg-white disabled:opacity-60"
+            >
+              Keep complaint
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(complaint)}
+              disabled={deleting}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-rose-700 px-3 text-xs font-semibold text-white hover:bg-rose-800 disabled:opacity-60"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Delete complaint
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   )
 }
@@ -96,6 +141,9 @@ export default function MyComplaintsPage() {
   const [filter, setFilter] = useState('All')
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [actionError, setActionError] = useState('')
+  const { refresh: refreshNotifications } = useCitizenNotifications()
 
   const loadComplaints = useCallback(async () => {
     setLoading(true)
@@ -108,6 +156,26 @@ export default function MyComplaintsPage() {
       setLoading(false)
     }
   }, [])
+
+  const handleDelete = async (complaint) => {
+    setActionError('')
+    setDeletingId(complaint.id)
+    try {
+      await deleteMyComplaint(complaint.id)
+      setComplaints((current) => current.filter((item) => item.id !== complaint.id))
+      setExpandedId((current) => current === complaint.id ? null : current)
+      refreshNotifications()
+    } catch (err) {
+      setActionError(err.message || 'Unable to delete this complaint.')
+      try {
+        setComplaints(await fetchMyComplaints())
+      } catch {
+        // Keep the current list visible and let the citizen retry the action.
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
     let isCurrent = true
@@ -182,6 +250,13 @@ export default function MyComplaintsPage() {
         </div>
       </section>
 
+      {actionError && (
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <p>{actionError}</p>
+        </div>
+      )}
+
       {error && (
         <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -202,6 +277,8 @@ export default function MyComplaintsPage() {
               complaint={complaint}
               expanded={expandedId === complaint.id}
               onToggle={() => setExpandedId(expandedId === complaint.id ? null : complaint.id)}
+              onDelete={handleDelete}
+              deleting={deletingId === complaint.id}
             />
           ))}
         </div>

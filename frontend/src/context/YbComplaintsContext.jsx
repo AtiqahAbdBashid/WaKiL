@@ -51,6 +51,30 @@ export function YbComplaintsProvider({ children }) {
     if (sessionUser?.id) reload();
   }, [sessionUser?.id, reload]);
 
+  const refreshComplaints = useCallback(() => {
+    ybApi.aduan()
+      .then((latestComplaints) => {
+        setComplaints(latestComplaints);
+        setSyncError(null);
+      })
+      .catch((error) => setSyncError(error.message));
+  }, []);
+
+  useEffect(() => {
+    if (!sessionUser?.id) return undefined;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshComplaints();
+    };
+    const timer = window.setInterval(refreshWhenVisible, 30_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [sessionUser?.id, refreshComplaints]);
+
   const persist = useCallback(
     (request) =>
       request

@@ -135,6 +135,14 @@ export async function fetchMyComplaints() {
   return Array.isArray(data.complaints) ? data.complaints : []
 }
 
+/** Delete one of the citizen's complaints while it is still Pending. */
+export async function deleteMyComplaint(complaintId) {
+  return request(`/complaints/${complaintId}`, {
+    method: 'DELETE',
+    failureMessage: 'Unable to delete this complaint.',
+  })
+}
+
 /**
  * Fetch all chat sessions for the citizen.
  * @returns {Promise<Array<{ id: string, status: string, started_at: string, ended_at?: string, title: string, preview?: string, complaint_ticket_id?: string, message_count: number }>>}

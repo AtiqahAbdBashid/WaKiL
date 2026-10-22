@@ -60,7 +60,11 @@ export default function SubmittedTicketCard({ submittedTicket, image, onReset })
               <div>
                 <dt className="text-xs text-muted">Status</dt>
                 <dd className="mt-1">
-                  <Badge tone="mint">{submittedTicket.status || 'Pending'}</Badge>
+                  <Badge
+                    tone={(submittedTicket.status || 'Pending') === 'Pending' ? 'warning' : submittedTicket.status === 'In Progress' ? 'info' : 'mint'}
+                  >
+                    {submittedTicket.status || 'Pending'}
+                  </Badge>
                 </dd>
               </div>
               <div>

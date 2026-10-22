@@ -4,6 +4,11 @@ export const citizenUser = {
   initials: 'AR',
   role: 'Citizen account',
   area: 'Lembah Pantai (P121)',
+  parliament: 'Lembah Pantai (P.121)',
+  mpName: 'YB Dato’ Seri Ahmad Fahmi bin Mohamed Fadzil',
+  dun: null,
+  adunName: null,
+  state: 'Federal Territory of Kuala Lumpur',
 }
 
 // TODO: replace with real API data
@@ -59,7 +64,7 @@ export const citizenUpdates = [
 
 // TODO: replace with real API data
 export const citizenRepresentative = {
-  initials: 'YB',
-  name: 'MP for Lembah Pantai',
-  role: 'Service Officer P121',
+  initials: 'AF',
+  name: 'YB Dato’ Seri Ahmad Fahmi bin Mohamed Fadzil',
+  role: 'Member of Parliament · Lembah Pantai',
 }

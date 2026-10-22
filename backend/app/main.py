@@ -1,17 +1,19 @@
-import uuid
 import re
+import uuid
 from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from google.genai import types
 from google.genai.errors import ClientError
-from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.prompts import CATEGORIES, PHOTO_REQUIRED_CATEGORIES
+
 from app.db import get_db, init_db
 from app.models import Category, ChatSession, Complaint, ComplaintUpdate, User
+from app.prompts import CATEGORIES, PHOTO_REQUIRED_CATEGORIES
 from app.schemas import (
     ChatRequest,
     ChatResponse,
@@ -48,7 +50,7 @@ from app.yb_portal.router import router as yb_portal_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Creates the tables and loads the mock data on first start against an empty database.
+    # Creates the tables and loads mock data on first start against an empty database.
     if init_db():
         print("Database was empty: loaded sql/schema.sql and scripts/wakil_mock_500.sql")
     yield
@@ -56,8 +58,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(yb_portal_router)
-
+# CORS middleware: allow the local Vite frontend origins.
+# Keep this before route registration so the app configuration is easy to inspect.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -65,6 +67,8 @@ app.add_middleware(
         "http://localhost:5174",
         "http://localhost:5175",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -72,6 +76,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(yb_portal_router)
 
 
 @app.exception_handler(ClientError)
@@ -182,7 +188,9 @@ def chat(
 def _confirm_response(complaint) -> ConfirmResponse:
     parliament, dun = (None, None)
     if complaint.latitude is not None:
-        parliament, dun = resolve_constituency_from_coords(complaint.latitude, complaint.longitude)
+        parliament, dun = resolve_constituency_from_coords(
+            complaint.latitude, complaint.longitude
+        )
     return ConfirmResponse(
         ticket_id=str(complaint.id),
         status=complaint.status,
@@ -295,45 +303,88 @@ def list_my_complaints(
 
     complaints = []
     for complaint, category in rows:
-        timeline = [{"status": "Pending", "label": "Submitted", "at": complaint.created_at.isoformat()}]
+        timeline = [
+            {
+                "status": "Pending",
+                "label": "Submitted",
+                "at": complaint.created_at.isoformat(),
+            }
+        ]
         for update in updates_by_complaint.get(complaint.id, []):
             if update.body.startswith("[resolve]"):
                 next_status = "Resolved"
             elif update.body.startswith("[group-assign]"):
                 # Claiming a pending complaint moves it to In Progress.
-                next_status = "In Progress" if timeline[-1]["status"] == "Pending" else timeline[-1]["status"]
+                next_status = (
+                    "In Progress"
+                    if timeline[-1]["status"] == "Pending"
+                    else timeline[-1]["status"]
+                )
             else:
                 match = re.search(r"→\s*(Pending|In Progress|Resolved)\s*$", update.body)
                 if not match:
                     continue
                 next_status = match.group(1)
             if timeline[-1]["status"] != next_status:
-                timeline.append({
-                    "status": next_status,
-                    "label": status_label(next_status),
-                    "at": update.created_at.isoformat(),
-                })
+                timeline.append(
+                    {
+                        "status": next_status,
+                        "label": status_label(next_status),
+                        "at": update.created_at.isoformat(),
+                    }
+                )
         if timeline[-1]["status"] != complaint.status:
             last_status_update = updates_by_complaint.get(complaint.id, [])
-            timeline.append({
+            timeline.append(
+                {
+                    "status": complaint.status,
+                    "label": status_label(complaint.status),
+                    "at": (
+                        last_status_update[-1].created_at.isoformat()
+                        if last_status_update
+                        else complaint.created_at.isoformat()
+                    ),
+                }
+            )
+        complaints.append(
+            {
+                "id": str(complaint.id),
+                "title": complaint.title,
+                "category": category,
+                "categories": [category, *(complaint.secondary_categories or [])],
                 "status": complaint.status,
-                "label": status_label(complaint.status),
-                "at": (
-                    last_status_update[-1].created_at.isoformat()
-                    if last_status_update
-                    else complaint.created_at.isoformat()
-                ),
-            })
-        complaints.append({
-            "id": str(complaint.id),
-            "title": complaint.title,
-            "category": category,
-            "categories": [category, *(complaint.secondary_categories or [])],
-            "status": complaint.status,
-            "created_at": complaint.created_at.isoformat(),
-            "timeline": timeline,
-        })
+                "created_at": complaint.created_at.isoformat(),
+                "timeline": timeline,
+            }
+        )
     return {"complaints": complaints}
+
+
+@app.delete("/complaints/{complaint_id}")
+def delete_my_complaint(
+    complaint_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    complaint = db.scalar(
+        select(Complaint)
+        .where(
+            Complaint.id == complaint_id,
+            Complaint.user_id == user.id,
+        )
+        .with_for_update()
+    )
+    if complaint is None:
+        raise HTTPException(status_code=404, detail="Complaint not found.")
+    if complaint.status != "Pending":
+        raise HTTPException(
+            status_code=409,
+            detail="This complaint can no longer be deleted because its status has changed.",
+        )
+
+    db.delete(complaint)
+    db.commit()
+    return {"deleted": True}
 
 
 @app.post("/complaints/suggest-category", response_model=SuggestCategoryResponse)
@@ -366,18 +417,14 @@ def suggest_category(req: SuggestCategoryRequest):
         if img_part:
             parts.append(img_part)
 
-    contents = [
-        types.Content(
-            role="user",
-            parts=parts,
-        )
-    ]
+    contents = [types.Content(role="user", parts=parts)]
     result = classify(contents)
     result, _ = apply_fallback(result)
     return SuggestCategoryResponse(
         category=result.category,
         secondary_categories=[
-            category for category in dict.fromkeys(result.secondary_categories)
+            category
+            for category in dict.fromkeys(result.secondary_categories)
             if category in CATEGORIES and category != result.category
         ],
         priority=result.priority,
@@ -409,10 +456,11 @@ def submit_complaint_form(
             parts.append(img_part)
 
     contents = [types.Content(role="user", parts=parts)]
-
     result = finalize_complaint(contents)
     final_category = (
-        req.category if req.category and req.category in CATEGORIES else result["category"]
+        req.category
+        if req.category and req.category in CATEGORIES
+        else result["category"]
     )
     ai_categories = [
         category for category in dict.fromkeys(req.categories)
@@ -427,7 +475,10 @@ def submit_complaint_form(
         if not photo_exception_reason:
             raise HTTPException(
                 status_code=422,
-                detail="Photo evidence is required for this category. If a photo is unavailable, unsafe to take, or sensitive, select an exception reason.",
+                detail=(
+                    "Photo evidence is required for this category. If a photo is unavailable, "
+                    "unsafe to take, or sensitive, select an exception reason."
+                ),
             )
     final_priority = (
         req.priority

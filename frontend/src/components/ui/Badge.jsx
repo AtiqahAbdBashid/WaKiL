@@ -2,6 +2,8 @@ const tones = {
   brand: 'bg-brand-soft text-brand',
   accent: 'bg-accent-soft text-accent-dark',
   mint: 'bg-mint-soft text-mint-dark',
+  warning: 'bg-yellow-100 text-yellow-800',
+  info: 'bg-blue-100 text-blue-800',
   neutral: 'bg-canvas text-muted',
   onColor: 'bg-white/20 text-white',
   onColorDark: 'bg-black/20 text-white',

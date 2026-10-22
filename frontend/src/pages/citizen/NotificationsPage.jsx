@@ -111,7 +111,11 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-sm font-bold text-ink">{item.heading}</h2>
-                      <Badge>{item.status}</Badge>
+                      <Badge
+                        tone={item.status === 'Pending' ? 'warning' : item.status === 'In Progress' ? 'info' : undefined}
+                      >
+                        {item.status}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-sm leading-5 text-ink-soft">{item.message}</p>
                     <p className="mt-2 text-xs text-muted">
